@@ -49,24 +49,6 @@ bool BinaryNinja::InitPlugins(bool allowUserPlugins)
 }
 
 
-void BinaryNinja::InitCorePlugins()
-{
-	BNInitCorePlugins();
-}
-
-
-void BinaryNinja::InitUserPlugins()
-{
-	BNInitUserPlugins();
-}
-
-
-void BinaryNinja::InitRepoPlugins()
-{
-	BNInitRepoPlugins();
-}
-
-
 string BinaryNinja::GetBundledPluginDirectory()
 {
 	char* path = BNGetBundledPluginDirectory();
@@ -109,17 +91,6 @@ string BinaryNinja::GetSystemCacheDirectory()
 string BinaryNinja::GetSettingsFileName()
 {
 	char* dir = BNGetSettingsFileName();
-	if (!dir)
-		return string();
-	string result(dir);
-	BNFreeString(dir);
-	return result;
-}
-
-
-string BinaryNinja::GetRepositoriesDirectory()
-{
-	char* dir = BNGetRepositoriesDirectory();
 	if (!dir)
 		return string();
 	string result(dir);

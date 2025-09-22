@@ -1076,29 +1076,29 @@ class PythonScriptingProvider(ScriptingProvider):
 		repo_path = _repo_path.decode("utf-8")
 		module = _module.decode("utf-8")
 		try:
-			repo = RepositoryManager()[repo_path]
-			plugin = repo[module]
+			# repo = RepositoryManager()[repo_path]
+			# plugin = repo[module]
 
-			if not force and self.apiName not in plugin.api:
-				raise ValueError(f"Plugin API name is not {self.name}")
+			# if not force and self.apiName not in plugin.api:
+			# 	raise ValueError(f"Plugin API name is not {self.name}")
 
-			if not force and core.core_platform not in plugin.install_platforms:
-				raise ValueError(
-				    f"Current platform {core.core_platform} isn't in list of valid platforms for this plugin {plugin.install_platforms}"
-				)
-			if not plugin.installed:
-				plugin.installed = True
+			# if not force and core.core_platform not in plugin.install_platforms:
+			# 	raise ValueError(
+			# 	    f"Current platform {core.core_platform} isn't in list of valid platforms for this plugin {plugin.install_platforms}"
+			# 	)
+			# if not plugin.installed:
+			# 	plugin.installed = True
 
-			plugin_full_path = str(Path(repo.full_path) / plugin.path)
-			if repo.full_path not in sys.path:
-				sys.path.append(repo.full_path)
+			plugin_full_path = str(Path(repo_path) / module)
+			if repo_path not in sys.path:
+				sys.path.append(repo_path)
 			if plugin_full_path not in sys.path:
 				sys.path.append(plugin_full_path)
 
-			if plugin.subdir:
-				__import__(module + "." + plugin.subdir.replace("/", "."))
-			else:
-				__import__(module)
+			# if plugin.subdir:
+			# 	__import__(module + "." + plugin.subdir.replace("/", "."))  # TODO : Bring back subdirs
+			# else:
+			__import__(module)
 			return True
 		except KeyError:
 			logger.log_error_for_exception(f"Failed to find python plugin: {repo_path}/{module}")

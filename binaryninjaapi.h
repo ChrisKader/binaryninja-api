@@ -2001,15 +2001,6 @@ namespace BinaryNinja {
 	void DisablePlugins();
 	bool IsPluginsEnabled();
 	bool InitPlugins(bool allowUserPlugins = true);
-	/*!
-		\deprecated Use `InitPlugins()`
-	*/
-	void InitCorePlugins();  // Deprecated, use InitPlugins
-	/*!
-		\deprecated Use `InitPlugins()`
-	*/
-	void InitUserPlugins();  // Deprecated, use InitPlugins
-	void InitRepoPlugins();
 
 	std::string GetBundledPluginDirectory();
 	void SetBundledPluginDirectory(const std::string& path);
@@ -18136,94 +18127,95 @@ namespace BinaryNinja {
 		virtual bool RunProgressDialog(const std::string& title, bool canCancel, std::function<void(ProgressFunction progress)> task) = 0;
 	};
 
-	typedef BNPluginOrigin PluginOrigin;
 	typedef BNPluginStatus PluginStatus;
-	typedef BNPluginType PluginType;
+
+	// /*!
+	// * \ingroup extensionmanager
+	// */
+	// class ExtensionVersion : public CoreRefCountObject<BNExtensionVersion, BNNewExtensionVersionReference, BNFreeExtensionVersion>
+	// {
+	// public:
+	// 				ExtensionVersion(BNExtensionVersion* version);
+	// 				std::string GetVersionString() const;
+	// 				std::string GetLongDescription() const;
+	// 				std::string GetChangelog() const;
+	// 				BNVersionInfo GetMinimumVersionInfo() const;
+	// 				BNVersionInfo GetMaximumVersionInfo() const;
+	// 				std::string GetDependencies() const;
+	// 				std::string GetDownloadUrl(bool contributeToInstallCounts = true) const;
+	// 				bool InstallDependencies() const;
+	// };
 
 	/*!
-		\ingroup pluginmanager
+	* \ingroup extensionmanager
 	*/
-	class RepoPlugin : public CoreRefCountObject<BNRepoPlugin, BNNewPluginReference, BNFreePlugin>
+	class Extension : public CoreRefCountObject<BNExtension, BNNewExtensionReference, BNFreeExtension>
 	{
-	  public:
-		RepoPlugin(BNRepoPlugin* plugin);
-		PluginStatus GetPluginStatus() const;
-		std::vector<std::string> GetApis() const;
-		std::vector<std::string> GetInstallPlatforms() const;
+	public:
+		Extension(BNExtension* extension);
 		std::string GetPath() const;
-		std::string GetSubdir() const;
-		std::string GetDependencies() const;
-		std::string GetPluginDirectory() const;
-		std::string GetAuthor() const;
-		std::string GetDescription() const;
-		std::string GetLicenseText() const;
-		std::string GetLongdescription() const;
-		std::string GetName() const;
-		std::vector<PluginType> GetPluginTypes() const;
-		std::string GetPackageUrl() const;
-		std::string GetProjectUrl() const;
-		std::string GetAuthorUrl() const;
-		std::string GetVersion() const;
-		std::string GetCommit() const;
-		std::string GetRepository() const;
-		std::string GetProjectData();
-		VersionInfo GetMinimumVersionInfo() const;
-		VersionInfo GetMaximumVersionInfo() const;
-		uint64_t GetLastUpdate();
-		bool IsViewOnly() const;
-		bool IsBeingDeleted() const;
-		bool IsBeingUpdated() const;
+		// PluginStatus GetPluginStatus() const;
+
 		bool IsInstalled() const;
 		bool IsEnabled() const;
+
+		std::string GetAuthor() const;
+		std::string GetDescription() const;
+		std::string GetName() const;
+		std::string GetPluginType() const;
+		std::string GetProjectUrl() const;
+
+		std::string GetChannelName() const;
+		// std::vector<Ref<ExtensionVersion>> GetVersions() const;
+		// Ref<ExtensionVersion> GetCurrentVersion() const;
+		// Ref<ExtensionVersion> GetLatestVersion() const;
+		// bool IsBeingDeleted() const;
+		// bool IsBeingUpdated() const;
+		// bool IsInstalled() const;
+		// bool IsEnabled() const;
 		bool IsRunning() const;
-		bool IsUpdatePending() const;
-		bool IsDisablePending() const;
-		bool IsDeletePending() const;
-		bool IsUpdateAvailable() const;
-		bool AreDependenciesBeingInstalled() const;
-
-		bool Uninstall();
-		bool Install();
-		bool InstallDependencies();
-		// `force` ignores optional checks for platform/api compliance
-		bool Enable(bool force);
+		// bool IsUpdatePending() const;
+		// bool IsDisablePending() const;
+		// bool IsDeletePending() const;
+		// bool IsUpdateAvailable() const;
+		// bool AreDependenciesBeingInstalled() const;
+		// bool Uninstall();
+		// bool Install(Ref<ExtensionVersion> version = nullptr);
+		// bool InstallDependencies();
+		bool Enable();
+		// bool Update(Ref<ExtensionVersion> version = nullptr);
 		bool Disable();
-		bool Update();
 	};
 
 	/*!
-		\ingroup pluginmanager
+	* \ingroup extensionmanager
 	*/
-	class Repository : public CoreRefCountObject<BNRepository, BNNewRepositoryReference, BNFreeRepository>
+	class ExtensionChannel : public CoreRefCountObject<BNExtensionChannel, BNNewChannelReference, BNFreeChannel>
 	{
-	  public:
-		Repository(BNRepository* repository);
-		std::string GetUrl() const;
-		std::string GetRepoPath() const;
-		std::string GetLocalReference() const;
-		std::string GetRemoteReference() const;
-		std::vector<Ref<RepoPlugin>> GetPlugins() const;
-		std::string GetPluginDirectory() const;
-		Ref<RepoPlugin> GetPluginByPath(const std::string& pluginPath);
-		std::string GetFullPath() const;
+	public:
+		ExtensionChannel(BNExtensionChannel* channel);
+		// std::string GetUrl() const;
+		std::string GetName() const;
+		std::vector<Ref<Extension>> GetExtensions() const;
+		// Ref<Extension> GetExtensionByPath(const std::string& pluginPath);
+		// std::string GetFullPath() const;
 	};
 
 	/*!
-		\ingroup pluginmanager
-	*/
-	class RepositoryManager :
-	    public CoreRefCountObject<BNRepositoryManager, BNNewRepositoryManagerReference, BNFreeRepositoryManager>
+		* \ingroup extensionmanager
+		*/
+	class ExtensionManager
 	{
-	  public:
-		RepositoryManager(const std::string& enabledPluginsPath);
-		RepositoryManager(BNRepositoryManager* repoManager);
-		RepositoryManager();
-		bool CheckForUpdates();
-		std::vector<Ref<Repository>> GetRepositories();
-		Ref<Repository> GetRepositoryByPath(const std::string& repoName);
-		bool AddRepository(const std::string& url,  // URL to raw plugins.json file
-		    const std::string& repoPath);           // Relative path within the repositories directory
-		Ref<Repository> GetDefaultRepository();
+		BNExtensionManager* m_object;
+	public:
+		ExtensionManager(BNExtensionManager* manager);
+		ExtensionManager();
+		// bool CheckForUpdates();
+		// bool FetchChannelsAsync();
+		std::vector<Ref<ExtensionChannel>> GetChannels();
+		// Ref<ExtensionChannel> GetChannelByName(const std::string& name);
+		// bool AddChannel(const std::string& url, const std::string& name);
+		// std::string GetUserExtensionsDirectory() const;
 	};
 
 	/*! \c Settings provides a way to define and access settings in a hierarchical fashion. The value of a setting can

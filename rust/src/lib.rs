@@ -69,7 +69,7 @@ pub mod rc;
 pub mod references;
 pub mod relocation;
 pub mod render_layer;
-pub mod repository;
+// pub mod channel;
 pub mod secrets_provider;
 pub mod section;
 pub mod segment;
@@ -309,15 +309,6 @@ pub fn user_plugin_directory() -> Result<PathBuf, ()> {
     }
     let user_plugin_dir_str = unsafe { BnString::into_string(s) };
     Ok(PathBuf::from(user_plugin_dir_str))
-}
-
-pub fn repositories_directory() -> Result<PathBuf, ()> {
-    let s: *mut c_char = unsafe { BNGetRepositoriesDirectory() };
-    if s.is_null() {
-        return Err(());
-    }
-    let repo_dir_str = unsafe { BnString::into_string(s) };
-    Ok(PathBuf::from(repo_dir_str))
 }
 
 pub fn settings_file_path() -> PathBuf {
