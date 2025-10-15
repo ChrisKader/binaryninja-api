@@ -37,7 +37,7 @@
 // Current ABI version for linking to the core. This is incremented any time
 // there are changes to the API that affect linking, including new functions,
 // new types, or modifications to existing functions or types.
-#define BN_CURRENT_CORE_ABI_VERSION 136
+#define BN_CURRENT_CORE_ABI_VERSION 137
 
 // Minimum ABI version that is supported for loading of plugins. Plugins that
 // are linked to an ABI version less than this will not be able to load and
@@ -5630,6 +5630,7 @@ extern "C"
 	BINARYNINJACOREAPI bool BNTypeContainerGetTypeIds(BNTypeContainer* container, char*** typeIds, size_t* count);
 	BINARYNINJACOREAPI bool BNTypeContainerGetTypeNames(BNTypeContainer* container, BNQualifiedName** typeNames, size_t* count);
 	BINARYNINJACOREAPI bool BNTypeContainerGetTypeNamesAndIds(BNTypeContainer* container, char*** typeIds, BNQualifiedName** typeNames, size_t* count);
+	BINARYNINJACOREAPI size_t BNTypeContainerGetTypeCount(BNTypeContainer* container);
 	BINARYNINJACOREAPI bool BNTypeContainerParseTypeString(BNTypeContainer* container,
 		const char* source, bool importDepencencies, BNQualifiedNameAndType* result,
 		BNTypeParserError** errors, size_t* errorCount

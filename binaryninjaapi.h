@@ -20127,6 +20127,12 @@ namespace BinaryNinja {
 		 */
 		std::optional<std::unordered_map<std::string, QualifiedName>> GetTypeNamesAndIds() const;
 
+		/*! Get the number of types in a Type Container.
+
+			\return Number of types in the container
+		 */
+		size_t GetTypeCount() const;
+
 		/*! Parse a single type and name from a string containing their definition,
 			with knowledge of the types in the Type Container.
 
