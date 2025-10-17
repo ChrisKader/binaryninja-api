@@ -793,6 +793,8 @@ string Type::GetTypeAndName(const QualifiedName& nameList, BNTokenEscapingType e
 	return outName;
 }
 
+
+
 string Type::GetStringBeforeName(Platform* platform, BNTokenEscapingType escaping) const
 {
 	char* str = BNGetTypeStringBeforeName(m_object, platform ? platform->GetObject() : nullptr, escaping);
@@ -843,6 +845,13 @@ vector<InstructionTextToken> Type::GetTokensAfterName(Platform* platform, uint8_
 Ref<Type> Type::Duplicate() const
 {
 	return new Type(BNDuplicateType(m_object));
+}
+
+
+Type* Type::SetIgnored(bool setIgnored)
+{
+	BNTypeSetIgnored(m_object, setIgnored);
+	return this;
 }
 
 

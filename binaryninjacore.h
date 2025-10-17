@@ -6729,6 +6729,7 @@ extern "C"
 	BINARYNINJACOREAPI char* BNGetTypeAndName(BNType* type, BNQualifiedName* name, BNTokenEscapingType escaping);
 	BINARYNINJACOREAPI void BNFreeType(BNType* type);
 	BINARYNINJACOREAPI void BNFreeTypeList(BNType** types, size_t count);
+	BINARYNINJACOREAPI BNType* BNTypeSetIgnored(BNType* type, bool ignored);
 
 	BINARYNINJACOREAPI BNTypeBuilder* BNCreateTypeBuilderFromType(BNType* type);
 	BINARYNINJACOREAPI BNTypeBuilder* BNCreateVoidTypeBuilder(void);

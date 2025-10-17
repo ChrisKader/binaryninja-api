@@ -10245,6 +10245,11 @@ namespace BinaryNinja {
 
 		Ref<Type> Duplicate() const;
 
+		/*! Call this with setIgnored=True if this Type object is expected to be always resident.
+		 *  This prevents the type object from showing up in the results of GetMemoryUsageInfo
+		 */
+		Type* SetIgnored(bool setIgnored);
+
 
 		/*! Create a "void" type
 
