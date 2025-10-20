@@ -595,6 +595,8 @@ bool PEView::Init()
 
 		Ref<Settings> viewSettings = Settings::Instance();
 		m_extractMangledTypes = viewSettings->Get<bool>("analysis.extractTypesFromMangledNames", this);
+		m_extractGNU3MangledTypes = viewSettings->Get<bool>("analysis.extractTypesFromGNU3MangledNames", this);
+		m_gnu3Demangler = Demangler::GetByName("GNU3");
 		m_simplifyTemplates = viewSettings->Get<bool>("analysis.types.templateSimplifier", this);
 
 		bool platformSetByUser = false;
@@ -2986,7 +2988,9 @@ void PEView::AddPESymbol(BNSymbolType type, const string& dll, const string& nam
 					fullName = shortName;
 					if (demangledType)
 						fullName += demangledType->GetStringAfterName();
-					if (!typeRef && m_extractMangledTypes && !GetDefaultPlatform()->GetFunctionByName(rawName))
+					if (!m_extractGNU3MangledTypes && m_gnu3Demangler->IsMangledString(rawName))
+						typeRef = nullptr;
+					else if(!typeRef && m_extractMangledTypes && !GetDefaultPlatform()->GetFunctionByName(rawName))
 						typeRef = demangledType;
 				}
 				else

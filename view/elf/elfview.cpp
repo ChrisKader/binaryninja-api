@@ -465,7 +465,7 @@ bool ElfView::Init()
 	SetOriginalImageBase(initialImageBase);
 	uint64_t preferredImageBase = initialImageBase;
 	Ref<Settings> viewSettings = Settings::Instance();
-	m_extractMangledTypes = viewSettings->Get<bool>("analysis.extractTypesFromMangledNames", this);
+	m_extractMangledTypes = viewSettings->Get<bool>("analysis.extractTypesFromGNU3MangledNames", this);
 	m_simplifyTemplates = viewSettings->Get<bool>("analysis.types.templateSimplifier", this);
 
 	bool platformSetByUser = false;

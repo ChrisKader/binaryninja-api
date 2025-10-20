@@ -457,7 +457,9 @@ namespace BinaryNinja
 		Ref<Architecture> m_arch;
 		bool m_is64;
 		bool m_extractMangledTypes;
+		bool m_extractGNU3MangledTypes;
 		bool m_simplifyTemplates;
+		Ref<Demangler> m_gnu3Demangler;
 		Ref<Logger> m_logger;
 		bool m_relocatable = false;
 
@@ -473,7 +475,6 @@ namespace BinaryNinja
 		uint64_t Read64(uint64_t rva);
 		void AddPESymbol(BNSymbolType type, const std::string& dll, const std::string& name, uint64_t addr,
 			BNSymbolBinding binding = NoBinding, uint64_t ordinal = 0, std::vector<Ref<TypeLibrary>> lib = {});
-
 	protected:
 		virtual uint64_t PerformGetEntryPoint() const override;
 
