@@ -53,6 +53,14 @@ class _ConstantRendererMetaClass(type):
 
 
 class ConstantRenderer(metaclass=_ConstantRendererMetaClass):
+	"""
+	``class ConstantRenderer`` allows custom rendering of constants in high level representations.
+
+	The :py:func:`render_constant` method will be called when rendering constants that aren't pointers, while the
+	:py:func:`render_constant_pointer` method will be called when rendering constant pointers. The
+	:py:func:`is_valid_for_type` method can be optionally overridden to call the rendering methods only when
+	the expression type matches a custom filter.
+	"""
 	_registered_renderers = []
 	renderer_name = None
 
@@ -61,6 +69,7 @@ class ConstantRenderer(metaclass=_ConstantRendererMetaClass):
 			self.handle = core.handle_of_type(handle, core.BNConstantRenderer)
 
 	def register(self):
+		"""Registers the constant renderer."""
 		if self.__class__.renderer_name is None:
 			raise ValueError("Renderer name is missing")
 		self._cb = core.BNCustomConstantRenderer()
@@ -117,6 +126,15 @@ class ConstantRenderer(metaclass=_ConstantRendererMetaClass):
 		return self.__class__.renderer_name
 
 	def is_valid_for_type(self, func: 'highlevelil.HighLevelILFunction', type: 'types.Type') -> bool:
+		"""
+		Determines if the rendering methods should be called for the given expression type. It is optional
+		to override this method. If the method isn't overridden, all expression types are passed to the
+		rendering methods.
+
+		:param func: `HighLevelILFunction` representing the high level function to be rendered
+		:param type: Type of the expression
+		:return: `True` if the constant should be passed to the rendering methods, `False` otherwise
+		"""
 		return True
 
 	def render_constant(
@@ -124,6 +142,21 @@ class ConstantRenderer(metaclass=_ConstantRendererMetaClass):
 		tokens: 'languagerepresentation.HighLevelILTokenEmitter',
 		settings: Optional['function.DisassemblySettings'], precedence: 'enums.OperatorPrecedence'
 	) -> bool:
+		"""
+		Can be overridden to render a constant that is not a pointer. The expression type and value of the
+		expression are given. If the expression is not handled by this constant renderer, this method should
+		return `False`.
+
+		To render a constant, emit the tokens to the `tokens` object and return `True`.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:param tokens: Token emitter for adding the rendered tokens
+		:param settings: Settings for rendering
+		:param precedence: Operator precedence of the expression
+		:return: `True` if the constant was rendered, `False` otherwise
+		"""
 		return False
 
 	def render_constant_pointer(
@@ -132,6 +165,21 @@ class ConstantRenderer(metaclass=_ConstantRendererMetaClass):
 		settings: Optional['function.DisassemblySettings'], symbol_display: 'enums.SymbolDisplayType',
 		precedence: 'enums.OperatorPrecedence'
 	) -> bool:
+		"""
+		Can be overridden to render a constant pointer. The expression type and value of the expression are given.
+		If the expression is not handled by this constant renderer, this method should return `False`.
+
+		To render a constant pointer, emit the tokens to the `tokens` object and return `True`.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:param tokens: Token emitter for adding the rendered tokens
+		:param settings: Settings for rendering
+		:param symbol_display: Type of symbol to display
+		:param precedence: Operator precedence of the expression
+		:return: `True` if the constant was rendered, `False` otherwise
+		"""
 		return False
 
 

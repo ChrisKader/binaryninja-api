@@ -5372,6 +5372,11 @@ namespace BinaryNinja {
 		std::vector<TypeReferenceSource> typeRefs;
 	};
 
+	/*! Represents a custom string type. String types contain the name of the string type and the prefix
+		and postfix used to render them in code.
+
+		\ingroup stringrecognizer
+	*/
 	class CustomStringType: public StaticCoreRefCountObject<BNCustomStringType>
 	{
 	public:
@@ -5384,6 +5389,10 @@ namespace BinaryNinja {
 			const std::string& name, const std::string& stringPrefix = "", const std::string& stringPostfix = "");
 	};
 
+	/*! Location associated with a derived string. Locations are optional.
+
+		\ingroup stringrecognizer
+	*/
 	struct DerivedStringLocation
 	{
 		BNDerivedStringLocationType locationType;
@@ -5418,6 +5427,12 @@ namespace BinaryNinja {
 		}
 	};
 
+	/*! Contains a string derived from code or data. The string does not need to be directly present in
+		the binary in its raw form. Derived strings can have optional locations to data or code. When
+		creating new derived strings, a custom type should be registered with \c CustomStringType::register.
+
+		\ingroup stringrecognizer
+	*/
 	struct DerivedString
 	{
 		StringRef value;
@@ -21425,6 +21440,10 @@ namespace BinaryNinja {
 		) override;
 	};
 
+	/*! \c ConstantRenderer allows custom rendering of constants in high level representations.
+
+		\ingroup constantrenderer
+	*/
 	class ConstantRenderer : public StaticCoreRefCountObject<BNConstantRenderer>
 	{
 		std::string m_nameForRegister;
@@ -21435,9 +21454,47 @@ namespace BinaryNinja {
 
 		std::string GetName() const;
 
+		/*! Determines if the rendering methods should be called for the given expression type. It is optional
+			to override this method. If the method isn't overridden, all expression types are passed to the
+			rendering methods.
+
+		    \param func \c HighLevelILFunction representing the high level function to be queried
+		    \param type Type of the expression
+		    \return \c true if the constant should be passed to the rendering methods, \c false otherwise
+		*/
 		virtual bool IsValidForType(HighLevelILFunction* func, Type* type);
+
+		/*! Can be overridden to render a constant that is not a pointer. The expression type and value of the
+			expression are given. If the expression is not handled by this constant renderer, this method should
+			return \c false
+
+			To render a constant, emit the tokens to the tokens object and return \c true
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+			\param tokens Token emitter for adding the rendered tokens
+			\param settings Settings for rendering
+			\param precedence Operator precedence of the expression
+			\return \c true` if the constant was rendered, \c false otherwise
+		*/
 		virtual bool RenderConstant(const HighLevelILInstruction& instr, Type* type, int64_t val,
 			HighLevelILTokenEmitter& tokens, DisassemblySettings* settings, BNOperatorPrecedence precedence);
+
+		/*! Can be overridden to render a constant pointer. The expression type and value of the
+			expression are given. If the expression is not handled by this constant renderer, this method should
+			return \c false
+
+			To render a constant, emit the tokens to the tokens object and return \c true
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+			\param tokens Token emitter for adding the rendered tokens
+			\param settings Settings for rendering
+			\param precedence Operator precedence of the expression
+			\return \c true` if the constant was rendered, \c false otherwise
+		*/
 		virtual bool RenderConstantPointer(const HighLevelILInstruction& instr, Type* type, int64_t val,
 			HighLevelILTokenEmitter& tokens, DisassemblySettings* settings, BNSymbolDisplayType symbolDisplay,
 			BNOperatorPrecedence precedence);
@@ -21473,6 +21530,10 @@ namespace BinaryNinja {
 			BNOperatorPrecedence precedence) override;
 	};
 
+	/*! \c StringRecognizer recognizes custom strings found in high level expressions.
+
+		\ingroup stringrecognizer
+	*/
 	class StringRecognizer : public StaticCoreRefCountObject<BNStringRecognizer>
 	{
 		std::string m_nameForRegister;
@@ -21483,13 +21544,70 @@ namespace BinaryNinja {
 
 		std::string GetName() const;
 
+		/*! Determines if the string recognizer should be called for the given expression type. It is optional
+			to override this method. If the method isn't overridden, all expression types are passed to the
+			string recognizer.
+
+		    \param func \c HighLevelILFunction representing the high level function to be queried
+		    \param type Type of the expression
+		    \return \c true if the expression should be passed to the string recognizer, \c false otherwise
+		*/
 		virtual bool IsValidForType(HighLevelILFunction* func, Type* type);
+
+		/*! Can be overridden to recognize strings for a constant that is not a pointer. The expression type and
+			value of the expression are given. If no string is found for this expression, this method should
+			return \c std::nullopt
+
+			If a string is found, return a \c DerivedString with the string information.
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+		    \return Optional \c DerivedString for any string that is found
+		*/
 		virtual std::optional<DerivedString> RecognizeConstant(
 			const HighLevelILInstruction& instr, Type* type, int64_t val);
+
+		/*! Can be overridden to recognize strings for a constant pointer. The expression type and
+			value of the expression are given. If no string is found for this expression, this method should
+			return \c std::nullopt
+
+			If a string is found, return a \c DerivedString with the string information.
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+		    \return Optional \c DerivedString for any string that is found
+		*/
 		virtual std::optional<DerivedString> RecognizeConstantPointer(
 			const HighLevelILInstruction& instr, Type* type, int64_t val);
+
+		/*! Can be overridden to recognize strings for an external symbol. The expression type and
+			value of the expression are given. If no string is found for this expression, this method should
+			return \c std::nullopt
+
+			If a string is found, return a \c DerivedString with the string information.
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+			\param offset Offset into the external symbol
+		    \return Optional \c DerivedString for any string that is found
+		*/
 		virtual std::optional<DerivedString> RecognizeExternPointer(
 			const HighLevelILInstruction& instr, Type* type, int64_t val, uint64_t offset);
+
+		/*! Can be overridden to recognize strings for an imported symbol. The expression type and
+			value of the expression are given. If no string is found for this expression, this method should
+			return \c std::nullopt
+
+			If a string is found, return a \c DerivedString with the string information.
+
+		    \param instr High level expression
+		    \param type Type of the expression
+		    \param val Value of the expression
+		    \return Optional \c DerivedString for any string that is found
+		*/
 		virtual std::optional<DerivedString> RecognizeImport(
 			const HighLevelILInstruction& instr, Type* type, int64_t val);
 

@@ -528,6 +528,8 @@ class StringReference:
 
 
 class StringRef:
+	"""Deduplicated reference to a string owned by the Binary Ninja core. Use `str` or `bytes` to convert
+	this to a standard Python string or sequence of bytes."""
 	def __init__(self, handle):
 		self.handle = core.handle_of_type(handle, core.BNStringRef)
 
@@ -589,6 +591,7 @@ class StringRef:
 
 @dataclass(frozen=True)
 class DerivedStringLocation:
+	"""Location associated with a derived string. Locations are optional."""
 	location_type: 'DerivedStringLocationType'
 	address: int
 	length: int
@@ -596,6 +599,12 @@ class DerivedStringLocation:
 
 @dataclass(frozen=True)
 class DerivedString:
+	"""
+	Contains a string derived from code or data. The string does not need to be directly present in
+	the binary in its raw form. Derived strings can have optional locations to data or code. When
+	creating new derived strings, a custom type should be registered with
+	:py:func:`~binaryninja.stringrecognizer.CustomStringType.register` on :py:class:`~binaryninja.stringrecognizer.CustomStringType`.
+	"""
 	value: 'StringRef'
 	location: Optional[DerivedStringLocation]
 	custom_type: Optional[stringrecognizer.CustomStringType]

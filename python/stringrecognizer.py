@@ -51,6 +51,10 @@ class _CustomStringTypeMetaClass(type):
 
 
 class CustomStringType(metaclass=_CustomStringTypeMetaClass):
+	"""
+	Represents a custom string type. String types contain the name of the string type and the prefix
+	and postfix used to render them in code.
+	"""
 	def __init__(self, handle):
 		self.handle = core.handle_of_type(handle, core.BNCustomStringType)
 
@@ -75,6 +79,10 @@ class CustomStringType(metaclass=_CustomStringTypeMetaClass):
 
 	@staticmethod
 	def register(name: str, string_prefix="", string_postfix="") -> 'CustomStringType':
+		"""
+		Registers a new custom string type. This can be used when creating new
+		:py:class:`~binaryninja.binaryview.DerivedString` objects.
+		"""
 		info = core.BNCustomStringTypeInfo()
 		info.name = name
 		info.stringPrefix = string_prefix
@@ -84,14 +92,17 @@ class CustomStringType(metaclass=_CustomStringTypeMetaClass):
 
 	@property
 	def name(self) -> str:
+		"""Name of the custom string type."""
 		return core.BNGetCustomStringTypeName(self.handle)
 
 	@property
 	def string_prefix(self) -> str:
+		"""Prefix added before the opening quote in a custom string."""
 		return core.BNGetCustomStringTypePrefix(self.handle)
 
 	@property
 	def string_postfix(self) -> str:
+		"""Postfix added after the closing quote in a custom string."""
 		return core.BNGetCustomStringTypePostfix(self.handle)
 
 
@@ -116,6 +127,16 @@ class _StringRecognizerMetaClass(type):
 
 
 class StringRecognizer(metaclass=_StringRecognizerMetaClass):
+	"""
+	``class StringRecognizer`` recognizes custom strings found in high level expressions.
+
+	The :py:func:`recognize_constant`, :py:func:`recognize_constant_pointer`,
+	:py:func:`recognize_extern_pointer`, and :py:func:`recognize_import` methods will be called for
+	the respective expression types. These methods can return a :py:class:`~binaryninja.binaryview.DerivedString`
+	containing the string information if a custom string is found for the expression. The
+	:py:func:`is_valid_for_type` method can be optionally overridden to call the recognizer methods
+	only when the expression type matches a custom filter.
+	"""
 	_registered_recognizers = []
 	recognizer_name = None
 
@@ -124,6 +145,7 @@ class StringRecognizer(metaclass=_StringRecognizerMetaClass):
 			self.handle = core.handle_of_type(handle, core.BNStringRecognizer)
 
 	def register(self):
+		"""Registers the string recognizer."""
 		if self.__class__.recognizer_name is None:
 			raise ValueError("Recognizer name is missing")
 		self._cb = core.BNCustomStringRecognizer()
@@ -214,26 +236,81 @@ class StringRecognizer(metaclass=_StringRecognizerMetaClass):
 		return self.__class__.recognizer_name
 
 	def is_valid_for_type(self, func: 'highlevelil.HighLevelILFunction', type: 'types.Type') -> bool:
+		"""
+		Determines if the string recognizer should be called for the given expression type. It is optional
+		to override this method. If the method isn't overridden, all expression types are passed to the
+		string recognizer.
+
+		:param func: `HighLevelILFunction` representing the high level function to be queried
+		:param type: Type of the expression
+		:return: `True` if the expression should be passed to the string recognizer, `False` otherwise
+		"""
 		return True
 
 	def recognize_constant(
 		self, instr: 'highlevelil.HighLevelILInstruction', type: 'types.Type', val: int
 	) -> Optional['binaryview.DerivedString']:
+		"""
+		Can be overridden to recognize strings for a constant that is not a pointer. The expression type and
+		value of the expression are given. If no string is found for this expression, this method should
+		return `None`.
+
+		If a string is found, return a :py:class:`~binaryninja.binaryview.DerivedString` with the string information.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:return: Optional :py:class:`~binaryninja.binaryview.DerivedString` for any string that is found.
+		"""
 		return None
 
 	def recognize_constant_pointer(
 		self, instr: 'highlevelil.HighLevelILInstruction', type: 'types.Type', val: int
 	) -> Optional['binaryview.DerivedString']:
+		"""
+		Can be overridden to recognize strings for a constant pointer. The expression type and value of the
+		expression are given. If no string is found for this expression, this method should return `None`.
+
+		If a string is found, return a :py:class:`~binaryninja.binaryview.DerivedString` with the string information.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:return: Optional :py:class:`~binaryninja.binaryview.DerivedString` for any string that is found.
+		"""
 		return None
 
 	def recognize_extern_pointer(
 		self, instr: 'highlevelil.HighLevelILInstruction', type: 'types.Type', val: int, offset: int
 	) -> Optional['binaryview.DerivedString']:
+		"""
+		Can be overridden to recognize strings for an external symbol. The expression type and value of the
+		expression are given. If no string is found for this expression, this method should return `None`.
+
+		If a string is found, return a :py:class:`~binaryninja.binaryview.DerivedString` with the string information.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:param offset: Offset into the external symbol
+		:return: Optional :py:class:`~binaryninja.binaryview.DerivedString` for any string that is found.
+		"""
 		return None
 
 	def recognize_import(
 		self, instr: 'highlevelil.HighLevelILInstruction', type: 'types.Type', val: int
 	) -> Optional['binaryview.DerivedString']:
+		"""
+		Can be overridden to recognize strings for an imported symbol. The expression type and value of the
+		expression are given. If no string is found for this expression, this method should return `None`.
+
+		If a string is found, return a :py:class:`~binaryninja.binaryview.DerivedString` with the string information.
+
+		:param instr: High level expression
+		:param type: Type of the expression
+		:param val: Value of the expression
+		:return: Optional :py:class:`~binaryninja.binaryview.DerivedString` for any string that is found.
+		"""
 		return None
 
 
