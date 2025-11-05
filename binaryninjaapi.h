@@ -1870,24 +1870,6 @@ namespace BinaryNinja {
 				\return The logger session ID
 			*/
 			size_t GetSessionId();
-
-			/*! Indent the logger's indentation level by one
-			 */
-			void Indent();
-
-			/*! Decrease the logger's indentation level by one
-			 */
-			void Dedent();
-
-			/*! Set the logger's indentation level to zero
-			 */
-			void ResetIndent();
-
-			/*! Get the string to prepend to log messages to indent them
-
-				\return Indentation string
-			 */
-			std::string GetIndent() const;
 	};
 
 	/*! A class allowing registering and retrieving Loggers
@@ -1946,24 +1928,6 @@ namespace BinaryNinja {
 			\return a list of registered logger names
 		*/
 		static std::vector<std::string> GetLoggerNames();
-	};
-
-	/*! RAII helper that indents/dedents a Logger inside a scope
-		\ingroup logging
-	 */
-	class LoggerIndentScope
-	{
-		Ref<Logger> m_logger;
-
-	public:
-		LoggerIndentScope(Ref<Logger> logger): m_logger(logger)
-		{
-			m_logger->Indent();
-		}
-		~LoggerIndentScope()
-		{
-			m_logger->Dedent();
-		}
 	};
 
 	/*!

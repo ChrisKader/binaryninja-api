@@ -486,7 +486,7 @@ void Logger::Log(BNLogLevel level, const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), level, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), level, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -496,7 +496,7 @@ void Logger::LogTrace(const char* fmt, ...)
 #ifdef BN_ENABLE_LOG_TRACE
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 #endif
 }
@@ -506,7 +506,7 @@ void Logger::LogDebug(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -515,7 +515,7 @@ void Logger::LogInfo(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), InfoLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), InfoLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -524,7 +524,7 @@ void Logger::LogWarn(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), WarningLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), WarningLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -533,7 +533,7 @@ void Logger::LogError(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), ErrorLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), ErrorLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -542,7 +542,7 @@ void Logger::LogAlert(const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	PerformLog(GetSessionId(), AlertLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+	PerformLog(GetSessionId(), AlertLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -552,7 +552,7 @@ void Logger::LogForException(BNLogLevel level, const std::exception& e, const ch
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), level, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), level, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -563,7 +563,7 @@ void Logger::LogTraceForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), DebugLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), DebugLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 #endif
 }
@@ -574,7 +574,7 @@ void Logger::LogDebugForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), DebugLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), DebugLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -584,7 +584,7 @@ void Logger::LogInfoForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), InfoLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), InfoLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -594,7 +594,7 @@ void Logger::LogWarnForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), WarningLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), WarningLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -604,7 +604,7 @@ void Logger::LogErrorForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), ErrorLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), ErrorLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -614,7 +614,7 @@ void Logger::LogAlertForException(const std::exception& e, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogForException(
-		GetSessionId(), AlertLog, GetName(), GetThreadId(), e, fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), AlertLog, GetName(), GetThreadId(), e, fmt, args);
 	va_end(args);
 }
 
@@ -624,7 +624,7 @@ void Logger::LogWithStackTrace(BNLogLevel level, const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), level, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), level, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -635,7 +635,7 @@ void Logger::LogTraceWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 #endif
 }
@@ -646,7 +646,7 @@ void Logger::LogDebugWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), DebugLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -656,7 +656,7 @@ void Logger::LogInfoWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), InfoLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), InfoLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -666,7 +666,7 @@ void Logger::LogWarnWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), WarningLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), WarningLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -676,7 +676,7 @@ void Logger::LogErrorWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), ErrorLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), ErrorLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -686,7 +686,7 @@ void Logger::LogAlertWithStackTrace(const char* fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 	PerformLogWithStackTrace(
-		GetSessionId(), AlertLog, GetName(), GetThreadId(), fmt::format("{}{}", GetIndent(), fmt).c_str(), args);
+		GetSessionId(), AlertLog, GetName(), GetThreadId(), fmt, args);
 	va_end(args);
 }
 
@@ -746,37 +746,6 @@ string Logger::GetName()
 size_t Logger::GetSessionId()
 {
 	return BNLoggerGetSessionId(m_object);
-}
-
-
-void Logger::Indent()
-{
-	BNLoggerIndent(m_object);
-}
-
-
-void Logger::Dedent()
-{
-	BNLoggerDedent(m_object);
-}
-
-
-void Logger::ResetIndent()
-{
-	BNLoggerResetIndent(m_object);
-}
-
-
-string Logger::GetIndent() const
-{
-	char* indent = BNGetLoggerIndent(m_object);
-	if (!indent)
-	{
-		return "";
-	}
-	string result = indent;
-	BNFreeString(indent);
-	return result;
 }
 
 

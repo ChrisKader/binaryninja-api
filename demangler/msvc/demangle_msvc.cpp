@@ -162,7 +162,7 @@ Demangle::Demangle(Architecture* arch, string mangledName) :
 	m_view(nullptr)
 {
 	m_logger = LogRegistry::CreateLogger("MSVCDemangle");
-	m_logger->ResetIndent();
+	//m_logger->ResetIndent();
 }
 
 
@@ -173,7 +173,7 @@ Demangle::Demangle(Ref<Platform> platform, string mangledName) :
 	m_view(nullptr)
 {
 	m_logger = LogRegistry::CreateLogger("MSVCDemangle");
-	m_logger->ResetIndent();
+	//m_logger->ResetIndent();
 }
 
 
@@ -186,7 +186,7 @@ Demangle::Demangle(Ref<BinaryView> view, string mangledName) :
 		throw DemangleException();
 	m_arch = m_platform->GetArchitecture();
 	m_logger = LogRegistry::CreateLogger("MSVCDemangle");
-	m_logger->ResetIndent();
+	//m_logger->ResetIndent();
 }
 
 
@@ -293,9 +293,9 @@ TypeBuilder Demangle::DemangleVarType(BackrefList& varList, bool isReturn, Quali
 		case 'O':
 		{
 			QualifiedName name;
-			m_logger->Indent();
+			//m_logger->Indent();
 			auto childType = DemangleVarType(varList, false, name);
-			m_logger->Dedent();
+			//m_logger->Dedent();
 			newType = TypeBuilder::ArrayType(childType.Finalize(), 0);
 			break;
 		}
@@ -340,9 +340,9 @@ TypeBuilder Demangle::DemangleVarType(BackrefList& varList, bool isReturn, Quali
 			reader.Consume(2);
 			DemangleModifiers(_const, _volatile, isMember);
 			QualifiedName name;
-			m_logger->Indent();
+			//m_logger->Indent();
 			newType = DemangleVarType(varList, false, name);
-			m_logger->Dedent();
+			//m_logger->Dedent();
 			newType.SetConst(_const);
 			newType.SetVolatile(_volatile);
 			return newType;
@@ -467,9 +467,9 @@ TypeBuilder Demangle::DemangleVarType(BackrefList& varList, bool isReturn, Quali
 					elementList.push_back(element);
 				}
 				QualifiedName name;
-				m_logger->Indent();
+				//m_logger->Indent();
 				child = DemangleVarType(varList, false, name);
-				m_logger->Dedent();
+				//m_logger->Dedent();
 
 				for (auto i = elementList.rbegin(); i != elementList.rend(); i++)
 				{
@@ -479,9 +479,9 @@ TypeBuilder Demangle::DemangleVarType(BackrefList& varList, bool isReturn, Quali
 			else
 			{
 				QualifiedName name;
-				m_logger->Indent();
+				//m_logger->Indent();
 				child = DemangleVarType(varList, true, name);
-				m_logger->Dedent();
+				//m_logger->Dedent();
 			}
 
 			child.SetConst(_const2);
@@ -501,17 +501,17 @@ TypeBuilder Demangle::DemangleVarType(BackrefList& varList, bool isReturn, Quali
 	}
 	case EnumerationTypeClass:
 		m_logger->LogDebug("Demangle enumeration\n");
-		m_logger->Indent();
+		//m_logger->Indent();
 		DemangleName(typeName, classFunctionType, varList);
-		m_logger->Dedent();
+		//m_logger->Dedent();
 		newType = TypeBuilder::NamedType(NamedTypeReference::GenerateAutoDemangledTypeReference(EnumNamedTypeClass, typeName),
 		                                 width, width);
 		break;
 	case StructureTypeClass:
 		m_logger->LogDebug("Demangle structure\n");
-		m_logger->Indent();
+		//m_logger->Indent();
 		DemangleName(typeName, classFunctionType, varList);
-		m_logger->Dedent();
+		//m_logger->Dedent();
 		switch (structType)
 		{
 		case ClassStructureType:
@@ -721,9 +721,9 @@ void Demangle::DemangleVariableList(vector<FunctionParameter>& paramList, Backre
 		FunctionParameter vt;
 		QualifiedName name;
 		m_logger->LogDebug("Argument %d: %s", i, reader.GetRaw());
-		m_logger->Indent();
+		//m_logger->Indent();
 		TypeBuilder type = DemangleVarType(varList, false, name);
-		m_logger->Dedent();
+		//m_logger->Dedent();
 		if (hasModifiers)
 		{
 			type.SetConst(_const);
@@ -820,9 +820,9 @@ void Demangle::DemangleNameTypeRtti(BNNameType& classFunctionType,
 		DemangleModifiers(_const, _volatile, isMember);
 
 		QualifiedName name;
-		m_logger->Indent();
+		//m_logger->Indent();
 		rtti = DemangleVarType(nameBackrefList, false, name);
-		m_logger->Dedent();
+		//m_logger->Dedent();
 		rtti.SetConst(_const);
 		rtti.SetVolatile(_volatile);
 		rtti.SetPointerSuffix(suffix);
@@ -991,9 +991,9 @@ string Demangle::DemangleTemplateInstantiationName(BackrefList& nameBackrefList)
 
 string Demangle::DemangleTemplateParams(vector<FunctionParameter>& params, BackrefList& nameBackrefList, string& out)
 {
-	m_logger->Indent();
+	//m_logger->Indent();
 	DemangleVariableList(params, nameBackrefList);
-	m_logger->Dedent();
+	//m_logger->Dedent();
 	m_logger->LogDebug("VariableList done\n");
 	out += "<";
 	for (size_t i = 0; i < params.size(); i++)
@@ -1564,10 +1564,10 @@ TypeBuilder Demangle::DemangleFunction(BNNameType classFunctionType, bool pointe
 
 		QualifiedName name;
 		m_logger->LogDebug("Demangle function return type %s", reader.GetRaw());
-		m_logger->Indent();
+		//m_logger->Indent();
 		returnType = DemangleVarType(nameBackrefList, true, name);
 		m_logger->LogDebug("Return type: %s", returnType.GetString().c_str());
-		m_logger->Dedent();
+		//m_logger->Dedent();
 		if (hasModifiers)
 		{
 			returnType.SetConst(return_const);
@@ -1641,9 +1641,9 @@ TypeBuilder Demangle::DemangleData()
 	m_logger->LogDebug("%s: '%s'\n", __FUNCTION__, reader.GetRaw());
 	bool _const = false, _volatile = false, isMember = false;
 	QualifiedName name;
-	m_logger->Indent();
+	//m_logger->Indent();
 	TypeBuilder newType = DemangleVarType(m_backrefList, false, name);
-	m_logger->Dedent();
+	//m_logger->Dedent();
 	auto suffix = DemanglePointerSuffix();
 	DemangleModifiers(_const, _volatile, isMember);
 	newType.SetConst(_const);
@@ -1701,7 +1701,7 @@ TypeBuilder Demangle::DemangleVTable()
 Demangle::DemangleContext Demangle::DemangleSymbol()
 {
 	m_logger->LogDebug("%s: '%s'\n", __FUNCTION__, reader.GetRaw());
-	m_logger->Indent();
+	//m_logger->Indent();
 	BNNameType classFunctionType = NoNameType;
 	QualifiedName varName;
 
