@@ -9,7 +9,6 @@
 #include "render.h"
 #include "filter.h"
 #include "uicontext.h"
-#include "tableviewbase.h"
 
 #define STRINGS_LIST_UPDATE_INTERVAL 250
 
@@ -167,7 +166,7 @@ class StringsViewSidebarWidget;
 
     \ingroup stringsview
 */
-class BINARYNINJAUIAPI StringsView : public TableViewBase, public View, public FilterTarget
+class BINARYNINJAUIAPI StringsView : public QTableView, public View, public FilterTarget
 {
 	Q_OBJECT
 
@@ -184,8 +183,6 @@ class BINARYNINJAUIAPI StringsView : public TableViewBase, public View, public F
 	uint64_t m_currentlySelectedDataAddress;
 	std::optional<BinaryNinja::DerivedString> m_derivedString;
 
-	QPointer<QHeaderView> m_horizontalHeader;
-	QPointer<QHeaderView> m_verticalHeader;
 	QTimer m_headerSaveDebounce;
 
 	void restoreHeaderState() const;
@@ -236,7 +233,6 @@ class BINARYNINJAUIAPI StringsView : public TableViewBase, public View, public F
 	virtual void mousePressEvent(QMouseEvent* event) override;
 	virtual void paintEvent(QPaintEvent* event) override;
 	virtual bool event(QEvent* event) override;
-	int defaultSectionWidth(int logicalIndex, int charWidth) const override;
 
   private Q_SLOTS:
 	void goToString(const QModelIndex& idx);
