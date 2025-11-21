@@ -3962,6 +3962,8 @@ namespace BinaryNinja {
 		    bool restoreRawView = true);
 		Ref<Database> GetDatabase();
 
+		Ref<class DatabaseObject> GetDatabaseObject();
+
 		/*! Rebase the given BinaryView to a new address
 
 			\param data BinaryView to rebase
