@@ -9335,6 +9335,7 @@ extern "C"
 	BINARYNINJACOREAPI int BNGetDatabaseObjectType(BNDatabaseObject* object);
 	BINARYNINJACOREAPI char* BNGetDatabaseObjectId(BNDatabaseObject* object);
 	BINARYNINJACOREAPI char* BNGetDatabaseObjectDescription(BNDatabaseObject* object);
+	BINARYNINJACOREAPI BNMetadata* BNGetDatabaseObjectMetadata(BNDatabaseObject* object);
 	BINARYNINJACOREAPI BNDatabaseObject* BNGetDatabaseObjectParent(BNDatabaseObject* object);
 	BINARYNINJACOREAPI size_t BNGetDatabaseObjectChildren(BNDatabaseObject* object, char*** names, BNDatabaseObject*** objects);
 	BINARYNINJACOREAPI char** BNGetDatabaseObjectDependencies(BNDatabaseObject* object, size_t* count);
