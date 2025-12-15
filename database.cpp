@@ -374,9 +374,21 @@ bool Snapshot::HasAncestor(Ref<Snapshot> other)
 }
 
 
+Database::Database()
+{
+	m_object = BNCreateDatabaseInstance();
+}
+
+
 Database::Database(BNDatabase* database)
 {
 	m_object = database;
+}
+
+
+bool Database::OpenExisting(const std::string& path)
+{
+	return BNDatabaseOpenExisting(m_object, path.c_str());
 }
 
 

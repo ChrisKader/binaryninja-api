@@ -3382,7 +3382,10 @@ namespace BinaryNinja {
 	class Database : public CoreRefCountObject<BNDatabase, BNNewDatabaseReference, BNFreeDatabase>
 	{
 	  public:
+		Database();
 		Database(BNDatabase* database);
+
+		bool OpenExisting(const std::string& path);
 
 		bool SnapshotHasData(int64_t id);
 		Ref<Snapshot> GetSnapshot(int64_t id);
