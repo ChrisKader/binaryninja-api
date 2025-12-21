@@ -214,6 +214,18 @@ class BINARYNINJAUIAPI LinearView : public QAbstractScrollArea, public View, pub
 	LinearViewCursorPosition m_cursorPos, m_selectionStartPos;
 	bool m_cursorAscii = false;
 	bool m_tokenSelection = false;
+	struct CursorTokenKey
+	{
+		bool valid = false;
+		uint64_t address = 0;
+		size_t exprIndex = BN_INVALID_EXPR;
+		size_t operand = BN_INVALID_OPERAND;
+		uint64_t value = 0;
+		BNInstructionTextTokenType type = TextToken;
+		std::string text;
+	};
+	CursorTokenKey m_cursorTokenKey;
+	CursorTokenKey m_selectionTokenKey;
 	HighlightTokenState m_highlight;
 	bool m_displayCollapseIndicators = false;
 	uint64_t m_navByRefTarget = 0;
@@ -226,6 +238,12 @@ class BINARYNINJAUIAPI LinearView : public QAbstractScrollArea, public View, pub
 	void updateStickyHeaderLine();
 	void updateStickyHeaderVisibility();
 	bool shouldShowStickyHeader() const;
+	void updateTokenKey(CursorTokenKey& key, const BinaryNinja::LinearDisassemblyLine& line, const LinearViewCursorPosition& pos);
+	void updateCursorTokenKey(const BinaryNinja::LinearDisassemblyLine& line, const LinearViewCursorPosition& pos);
+	void updateSelectionTokenKey(const BinaryNinja::LinearDisassemblyLine& line, const LinearViewCursorPosition& pos);
+	bool tokenMatchesKey(const BinaryNinja::InstructionTextToken& token, const CursorTokenKey& key) const;
+	bool applyTokenKey(LinearViewCursorPosition& pos, const CursorTokenKey& key, const std::vector<BinaryNinja::LinearDisassemblyLine>& lines);
+	void syncSelectionStartToCursor();
 
 	SettingsRef m_settings;
 	DisassemblySettingsRef m_options;
