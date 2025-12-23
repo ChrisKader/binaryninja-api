@@ -1566,6 +1566,13 @@ namespace BinaryNinja
 	};
 
 	template <>
+	struct MediumLevelILInstructionAccessor<MLIL_BLOCK_TO_EXPAND> : public MediumLevelILInstructionBase
+	{
+		MediumLevelILInstructionList GetSourceExprs() const { return GetRawOperandAsExprList(0); }
+		void SetSourceExprs(const _STD_VECTOR<ExprId>& exprs) { UpdateRawOperandAsExprList(0, exprs); }
+	};
+
+	template <>
 	struct MediumLevelILInstructionAccessor<MLIL_NOP> : public MediumLevelILInstructionBase
 	{};
 	template <>

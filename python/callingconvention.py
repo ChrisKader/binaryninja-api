@@ -20,7 +20,8 @@
 
 import traceback
 import ctypes
-from typing import Optional, Union
+from typing import Optional, Union, List, Dict
+from dataclasses import dataclass
 
 # Binary Ninja components
 from . import _binaryninjacore as core
@@ -28,10 +29,39 @@ from .log import log_error_for_exception
 from . import variable
 from . import function
 from . import architecture
+from . import types
 
 FunctionOrILFunction = Union["binaryninja.function.Function", "binaryninja.lowlevelil.LowLevelILFunction",
                              "binaryninja.mediumlevelil.MediumLevelILFunction",
                              "binaryninja.highlevelil.HighLevelILFunction"]
+
+
+@dataclass
+class CallLayout:
+	parameters: List['types.ValueLocation']
+	return_value: Optional['types.ValueLocation']
+	stack_adjustment: int
+	reg_stack_adjustments: Dict['architecture.RegisterIndex', int]
+
+	@staticmethod
+	def _from_core_struct(struct: core.BNCallLayout, func: Optional['function.Function'] = None) -> 'CallLayout':
+		params = []
+		if func is None:
+			arch = None
+		else:
+			arch = func.arch
+		for i in range(struct.parameterCount):
+			params.append(types.ValueLocation._from_core_struct(struct.parameters[i], arch))
+		if struct.returnValueValid:
+			return_value = types.ValueLocation._from_core_struct(struct.returnValue, arch)
+		else:
+			return_value = None
+		stack_adjust = struct.stackAdjustment
+		reg_stack_adjust = dict()
+		for i in range(struct.registerStackAdjustmentCount):
+			reg = architecture.RegisterIndex(struct.registerStackAdjustmentRegisters[i])
+			reg_stack_adjust[reg] = struct.registerStackAdjustmentAmounts[i]
+		return CallLayout(params, return_value, stack_adjust, reg_stack_adjust)
 
 
 class CallingConvention:
@@ -574,3 +604,25 @@ class CallingConvention:
 	@arch.setter
 	def arch(self, value: 'architecture.Architecture') -> None:
 		self._arch = value
+
+	def get_call_layout(
+		self, return_value: Optional['types.ReturnValueOrType'], params: 'types.ParamsType',
+		func: Optional['function.Function'] = None, permitted_regs: Optional[List['architecture.RegisterIndex']] = None
+	) -> 'CallLayout':
+		if return_value is None:
+			ret = types.ReturnValue(types.Type.void())._to_core_struct()
+		elif isinstance(return_value, types.ReturnValue):
+			ret = return_value._to_core_struct()
+		else:
+			ret = types.ReturnValue(return_value)._to_core_struct()
+		param_structs = types.FunctionBuilder._to_core_struct(params)
+		if permitted_regs is None:
+			layout = core.BNGetCallLayoutDefaultPermittedArgs(self.handle, ret, param_structs, len(params))
+		else:
+			regs = (ctypes.c_uint * len(permitted_regs))()
+			for i in range(len(permitted_regs)):
+				regs[i] = int(permitted_regs[i])
+			layout = core.BNGetCallLayout(self.handle, ret, param_structs, len(params), regs, len(permitted_regs))
+		result = CallLayout._from_core_struct(layout, func)
+		core.BNFreeCallLayout(layout)
+		return result

@@ -278,7 +278,9 @@ class MediumLevelILInstruction(BaseILInstruction):
 	        ("params", "expr_list")
 	    ], MediumLevelILOperation.MLIL_RET: [
 	        ("src", "expr_list")
-	    ], MediumLevelILOperation.MLIL_NORET: [], MediumLevelILOperation.MLIL_IF: [
+	    ], MediumLevelILOperation.MLIL_BLOCK_TO_EXPAND: [
+			("src", "expr_list")
+		], MediumLevelILOperation.MLIL_NORET: [], MediumLevelILOperation.MLIL_IF: [
 	        ("condition", "expr"), ("true", "int"), ("false", "int")
 	    ], MediumLevelILOperation.MLIL_GOTO: [("dest", "int")], MediumLevelILOperation.MLIL_CMP_E: [
 	        ("left", "expr"), ("right", "expr")
@@ -3096,6 +3098,15 @@ class MediumLevelILForceVerSsa(MediumLevelILInstruction, SSA):
 	def src(self) -> SSAVariable:
 		return self._get_var_ssa(2, 3)
 
+@dataclass(frozen=True, repr=False, eq=False)
+class MediumLevelILBlockToExpand(MediumLevelILInstruction):
+	@property
+	def exprs(self) -> List[MediumLevelILInstruction]:
+		return self._get_expr_list(0, 1)
+
+	@property
+	def detailed_operands(self) -> List[Tuple[str, MediumLevelILOperandType, str]]:
+		return [("exprs", self.exprs, "List[MediumLevelILInstruction]")]
 
 
 ILInstruction = {
@@ -3264,6 +3275,7 @@ ILInstruction = {
     MediumLevelILOperation.MLIL_ASSERT_SSA: MediumLevelILAssertSsa,
     MediumLevelILOperation.MLIL_FORCE_VER: MediumLevelILForceVer,
     MediumLevelILOperation.MLIL_FORCE_VER_SSA: MediumLevelILForceVerSsa,
+	MediumLevelILOperation.MLIL_BLOCK_TO_EXPAND: MediumLevelILBlockToExpand,  # [("exprs", "expr_list")],
 }
 
 
@@ -3953,6 +3965,10 @@ class MediumLevelILFunction:
 			if expr.operation == MediumLevelILOperation.MLIL_UNIMPL:
 				expr: MediumLevelILUnimpl
 				return dest.unimplemented(loc)
+			if expr.operation == MediumLevelILOperation.MLIL_BLOCK_TO_EXPAND:
+				expr: MediumLevelILBlockToExpand
+				params = [sub_expr_handler(src) for src in expr.src]
+				return dest.block_to_expand(params, loc)
 			raise NotImplementedError(f"unknown expr operation {expr.operation} in copy_expr_to")
 
 		new_index = do_copy(expr, dest, sub_expr_handler)
@@ -5805,6 +5821,18 @@ class MediumLevelILFunction:
 		:rtype: ExpressionIndex
 		"""
 		return self.expr(MediumLevelILOperation.MLIL_FCMP_UO, a, b, size=size, source_location=loc)
+
+	def block_to_expand(self, exprs: List[ExpressionIndex], loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
+		"""
+		``block_to_expand`` returns an expression to expand into multiple expressions. This expression must
+		be expanded by a future workflow step and is used temporarily to insert instructions.
+
+		:param List[ExpressionIndex] exprs: list of expressions
+		:param ILSourceLocation loc: location of returned expression
+		:return: The expression ``{ exprs... }``
+		:rtype: ExpressionIndex
+		"""
+		return self.expr(MediumLevelILOperation.MLIL_BLOCK_TO_EXPAND, len(exprs), self.add_operand_list(exprs), size=0, source_location=loc)
 
 	def goto(
 		self, label: MediumLevelILLabel, loc: Optional['ILSourceLocation'] = None

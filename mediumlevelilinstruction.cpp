@@ -292,6 +292,7 @@ static constexpr std::array s_instructionOperandUsage = {
 	OperandUsage{MLIL_FREE_VAR_SLOT_SSA, {DestSSAVariableMediumLevelOperandUsage, PartialSSAVariableSourceMediumLevelOperandUsage}},
 	OperandUsage{MLIL_VAR_PHI, {DestSSAVariableMediumLevelOperandUsage, SourceSSAVariablesMediumLevelOperandUsages}},
 	OperandUsage{MLIL_MEM_PHI, {DestMemoryVersionMediumLevelOperandUsage, SourceMemoryVersionsMediumLevelOperandUsage}},
+	OperandUsage{MLIL_BLOCK_TO_EXPAND, {SourceExprsMediumLevelOperandUsage}},
 };
 
 VALIDATE_INSTRUCTION_ORDER(s_instructionOperandUsage);
@@ -1553,6 +1554,10 @@ void MediumLevelILInstruction::VisitExprs(bn::base::function_ref<bool(const Medi
 		for (auto i : GetParameterExprs())
 			i.VisitExprs(func);
 		break;
+	case MLIL_BLOCK_TO_EXPAND:
+		for (auto i : GetSourceExprs<MLIL_BLOCK_TO_EXPAND>())
+			i.VisitExprs(func);
+		break;
 	default:
 		break;
 	}
@@ -1892,6 +1897,10 @@ ExprId MediumLevelILInstruction::CopyTo(MediumLevelILFunction* dest,
 		return dest->Undefined(loc);
 	case MLIL_UNIMPL:
 		return dest->Unimplemented(loc);
+	case MLIL_BLOCK_TO_EXPAND:
+		for (auto i : GetSourceExprs<MLIL_BLOCK_TO_EXPAND>())
+			params.push_back(subExprHandler(i));
+		return dest->BlockToExpand(params, loc);
 	default:
 		throw MediumLevelILInstructionAccessException();
 	}
@@ -3122,6 +3131,12 @@ ExprId MediumLevelILFunction::FloatCompareOrdered(size_t size, ExprId a, ExprId 
 ExprId MediumLevelILFunction::FloatCompareUnordered(size_t size, ExprId a, ExprId b, const ILSourceLocation& loc)
 {
 	return AddExprWithLocation(MLIL_FCMP_UO, loc, size, a, b);
+}
+
+
+ExprId MediumLevelILFunction::BlockToExpand(const vector<ExprId>& sources, const ILSourceLocation& loc)
+{
+	return AddExprWithLocation(MLIL_BLOCK_TO_EXPAND, loc, 0, sources.size(), AddOperandList(sources));
 }
 
 

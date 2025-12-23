@@ -658,3 +658,14 @@ pub struct VarSsaField {
 pub struct Trap {
     pub vector: u64,
 }
+
+// BLOCK_TO_EXPAND
+#[derive(Debug, Copy, Clone)]
+pub struct BlockToExpand {
+    pub first_operand: usize,
+    pub num_operands: usize,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct LiftedBlockToExpand {
+    pub exprs: Vec<MediumLevelILLiftedInstruction>,
+}

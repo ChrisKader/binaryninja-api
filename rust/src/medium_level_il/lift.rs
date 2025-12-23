@@ -183,6 +183,7 @@ pub enum MediumLevelILLiftedInstructionKind {
     VarSsaField(VarSsaField),
     VarAliasedField(VarSsaField),
     Trap(Trap),
+    BlockToExpand(LiftedBlockToExpand),
     // A placeholder for instructions that the Rust bindings do not yet support.
     // Distinct from `Unimpl` as that is a valid instruction.
     NotYetImplemented,
@@ -329,6 +330,7 @@ impl MediumLevelILLiftedInstruction {
             VarSsaField(_) => "VarSsaField",
             VarAliasedField(_) => "VarAliasedField",
             Trap(_) => "Trap",
+            BlockToExpand(_) => "BlockToExpand",
         }
     }
 
@@ -554,6 +556,7 @@ impl MediumLevelILLiftedInstruction {
                 ("offset", Operand::Int(op.offset)),
             ],
             Trap(op) => vec![("vector", Operand::Int(op.vector))],
+            BlockToExpand(op) => vec![("exprs", Operand::ExprList(op.exprs.clone()))],
         }
     }
 }

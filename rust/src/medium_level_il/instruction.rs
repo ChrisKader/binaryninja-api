@@ -680,6 +680,10 @@ impl MediumLevelILInstruction {
             MLIL_TRAP => Op::Trap(Trap {
                 vector: op.operands[0],
             }),
+            MLIL_BLOCK_TO_EXPAND => Op::BlockToExpand(BlockToExpand {
+                num_operands: op.operands[0] as usize,
+                first_operand: op.operands[1] as usize,
+            }),
         };
 
         Self {
@@ -1113,6 +1117,13 @@ impl MediumLevelILInstruction {
             VarSsaField(op) => Lifted::VarSsaField(op),
             VarAliasedField(op) => Lifted::VarAliasedField(op),
             Trap(op) => Lifted::Trap(op),
+            BlockToExpand(_op) => Lifted::BlockToExpand(LiftedBlockToExpand {
+                exprs: self
+                    .get_expr_list(0)
+                    .iter()
+                    .map(|expr| expr.lift())
+                    .collect(),
+            }),
         };
 
         MediumLevelILLiftedInstruction {
@@ -1826,6 +1837,7 @@ pub enum MediumLevelILInstructionKind {
     VarSsaField(VarSsaField),
     VarAliasedField(VarSsaField),
     Trap(Trap),
+    BlockToExpand(BlockToExpand),
     // A placeholder for instructions that the Rust bindings do not yet support.
     // Distinct from `Unimpl` as that is a valid instruction.
     NotYetImplemented,

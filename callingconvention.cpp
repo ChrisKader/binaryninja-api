@@ -24,6 +24,61 @@ using namespace std;
 using namespace BinaryNinja;
 
 
+CallLayout CallLayout::FromAPIObject(BNCallLayout* layout)
+{
+	CallLayout result;
+	result.parameters.reserve(layout->parameterCount);
+	for (size_t i = 0; i < layout->parameterCount; i++)
+		result.parameters.push_back(ValueLocation::FromAPIObject(&layout->parameters[i]));
+	if (layout->returnValueValid)
+		result.returnValue = ValueLocation::FromAPIObject(&layout->returnValue);
+	result.stackAdjustment = layout->stackAdjustment;
+	for (size_t i = 0; i < layout->registerStackAdjustmentCount; i++)
+	{
+		result.registerStackAdjustments[layout->registerStackAdjustmentRegisters[i]] =
+			layout->registerStackAdjustmentAmounts[i];
+	}
+	return result;
+}
+
+
+BNCallLayout CallLayout::ToAPIObject() const
+{
+	BNCallLayout result;
+	result.parameters = new BNValueLocation[parameters.size()];
+	result.parameterCount = parameters.size();
+	for (size_t i = 0; i < parameters.size(); i++)
+		result.parameters[i] = parameters[i].ToAPIObject();
+	result.returnValue = returnValue.value_or(ValueLocation()).ToAPIObject();
+	result.returnValueValid = returnValue.has_value();
+	result.stackAdjustment = stackAdjustment;
+
+	result.registerStackAdjustmentCount = registerStackAdjustments.size();
+	result.registerStackAdjustmentRegisters = new uint32_t[registerStackAdjustments.size()];
+	result.registerStackAdjustmentAmounts = new int32_t[registerStackAdjustments.size()];
+	size_t i = 0;
+	for (auto [reg, adjust] : registerStackAdjustments)
+	{
+		result.registerStackAdjustmentRegisters[i] = reg;
+		result.registerStackAdjustmentAmounts[i] = adjust;
+		i++;
+	}
+
+	return result;
+}
+
+
+void CallLayout::FreeAPIObject(BNCallLayout* layout)
+{
+	for (size_t i = 0; i < layout->parameterCount; i++)
+		ValueLocation::FreeAPIObject(&layout->parameters[i]);
+	delete[] layout->parameters;
+	ValueLocation::FreeAPIObject(&layout->returnValue);
+	delete[] layout->registerStackAdjustmentRegisters;
+	delete[] layout->registerStackAdjustmentAmounts;
+}
+
+
 CallingConvention::CallingConvention(BNCallingConvention* cc)
 {
 	m_object = cc;
@@ -56,6 +111,21 @@ CallingConvention::CallingConvention(Architecture* arch, const string& name)
 	cc.getIncomingFlagValue = GetIncomingFlagValueCallback;
 	cc.getIncomingVariableForParameterVariable = GetIncomingVariableForParameterVariableCallback;
 	cc.getParameterVariableForIncomingVariable = GetParameterVariableForIncomingVariableCallback;
+	cc.isReturnTypeRegisterCompatible = IsReturnTypeRegisterCompatibleCallback;
+	cc.getIndirectReturnValueLocation = GetIndirectReturnValueLocationCallback;
+	cc.getReturnedIndirectReturnValuePointer = GetReturnedIndirectReturnValuePointerCallback;
+	cc.isArgumentTypeRegisterCompatible = IsArgumentTypeRegisterCompatibleCallback;
+	cc.areNonRegisterArgumentsIndirect = AreNonRegisterArgumentsIndirectCallback;
+	cc.areStackArgumentsNaturallyAligned = AreStackArgumentsNaturallyAlignedCallback;
+	cc.getCallLayout = GetCallLayoutCallback;
+	cc.freeCallLayout = FreeCallLayoutCallback;
+	cc.getReturnValueLocation = GetReturnValueLocationCallback;
+	cc.freeValueLocation = FreeValueLocationCallback;
+	cc.getParameterLocations = GetParameterLocationsCallback;
+	cc.freeParameterLocations = FreeParameterLocationsCallback;
+	cc.getStackAdjustmentForLocations = GetStackAdjustmentForLocationsCallback;
+	cc.getRegisterStackAdjustments = GetRegisterStackAdjustmentsCallback;
+	cc.freeRegisterStackAdjustments = FreeRegisterStackAdjustmentsCallback;
 
 	AddRefForRegistration();
 	m_object = BNCreateCallingConvention(arch->GetObject(), name.c_str(), &cc);
@@ -273,6 +343,194 @@ void CallingConvention::GetParameterVariableForIncomingVariableCallback(
 }
 
 
+bool CallingConvention::IsReturnTypeRegisterCompatibleCallback(void* ctxt, BNType* type)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	Ref<Type> typeObj;
+	if (type)
+		typeObj = new Type(BNNewTypeReference(type));
+	return cc->IsReturnTypeRegisterCompatible(typeObj);
+}
+
+
+BNVariable CallingConvention::GetIndirectReturnValueLocationCallback(void* ctxt)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	return cc->GetIndirectReturnValueLocation();
+}
+
+
+bool CallingConvention::GetReturnedIndirectReturnValuePointerCallback(void* ctxt, BNVariable* outVar)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	auto var = cc->GetReturnedIndirectReturnValuePointer();
+	if (var.has_value())
+		*outVar = var.value();
+	return var.has_value();
+}
+
+
+bool CallingConvention::IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNType* type)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	Ref<Type> typeObj;
+	if (type)
+		typeObj = new Type(BNNewTypeReference(type));
+	return cc->IsArgumentTypeRegisterCompatible(typeObj);
+}
+
+
+bool CallingConvention::AreNonRegisterArgumentsIndirectCallback(void* ctxt)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	return cc->AreNonRegisterArgumentsIndirect();
+}
+
+
+bool CallingConvention::AreStackArgumentsNaturallyAlignedCallback(void* ctxt)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	return cc->AreStackArgumentsNaturallyAligned();
+}
+
+
+BNCallLayout CallingConvention::GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue,
+	BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+	size_t permittedRegCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	auto ret = ReturnValue::FromAPIObject(returnValue);
+	vector<FunctionParameter> paramObjs;
+	paramObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		paramObjs.push_back(FunctionParameter::FromAPIObject(&params[i]));
+	optional<set<uint32_t>> regOpt;
+	if (hasPermittedRegs)
+	{
+		set<uint32_t> regs;
+		for (size_t i = 0; i < permittedRegCount; i++)
+			regs.insert(permittedRegs[i]);
+		regOpt = regs;
+	}
+
+	auto layout = cc->GetCallLayout(ret, paramObjs, regOpt);
+	return layout.ToAPIObject();
+}
+
+
+void CallingConvention::FreeCallLayoutCallback(void*, BNCallLayout* layout)
+{
+	CallLayout::FreeAPIObject(layout);
+}
+
+
+BNValueLocation CallingConvention::GetReturnValueLocationCallback(void* ctxt, BNReturnValue* returnValue)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	ReturnValue ret = ReturnValue::FromAPIObject(returnValue);
+	ValueLocation location = cc->GetReturnValueLocation(ret);
+	return location.ToAPIObject();
+}
+
+
+void CallingConvention::FreeValueLocationCallback(void*, BNValueLocation* location)
+{
+	ValueLocation::FreeAPIObject(location);
+}
+
+
+BNValueLocation* CallingConvention::GetParameterLocationsCallback(void* ctxt, BNValueLocation* returnValue,
+	BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+	size_t permittedRegCount, size_t* outLocationCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	std::optional<ValueLocation> ret;
+	if (returnValue)
+		ret = ValueLocation::FromAPIObject(returnValue);
+	vector<FunctionParameter> paramObjs;
+	paramObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		paramObjs.push_back(FunctionParameter::FromAPIObject(&params[i]));
+	optional<set<uint32_t>> regOpt;
+	if (hasPermittedRegs)
+	{
+		set<uint32_t> regs;
+		for (size_t i = 0; i < permittedRegCount; i++)
+			regs.insert(permittedRegs[i]);
+		regOpt = regs;
+	}
+
+	vector<ValueLocation> locations = cc->GetParameterLocations(ret, paramObjs, regOpt);
+
+	*outLocationCount = locations.size();
+	BNValueLocation* result = new BNValueLocation[locations.size()];
+	for (size_t i = 0; i < locations.size(); i++)
+		result[i] = locations[i].ToAPIObject();
+	return result;
+}
+
+
+void CallingConvention::FreeParameterLocationsCallback(void*, BNValueLocation* locations, size_t count)
+{
+	for (size_t i = 0; i < count; i++)
+		ValueLocation::FreeAPIObject(&locations[i]);
+	delete[] locations;
+}
+
+
+int64_t CallingConvention::GetStackAdjustmentForLocationsCallback(
+	void* ctxt, BNValueLocation* returnValue, BNValueLocation* locations, BNType** types, size_t paramCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	std::optional<ValueLocation> ret;
+	if (returnValue)
+		ret = ValueLocation::FromAPIObject(returnValue);
+	vector<ValueLocation> locationObjs;
+	locationObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		locationObjs.push_back(ValueLocation::FromAPIObject(&locations[i]));
+	vector<Ref<Type>> typeObjs;
+	typeObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		typeObjs.push_back(new Type(BNNewTypeReference(types[i])));
+
+	return cc->GetStackAdjustmentForLocations(ret, locationObjs, typeObjs);
+}
+
+
+size_t CallingConvention::GetRegisterStackAdjustmentsCallback(void* ctxt, BNValueLocation* returnValue,
+	BNValueLocation* params, size_t paramCount, uint32_t** outRegs, int32_t** outAdjust)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	std::optional<ValueLocation> ret;
+	if (returnValue)
+		ret = ValueLocation::FromAPIObject(returnValue);
+	vector<ValueLocation> paramObjs;
+	paramObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		paramObjs.push_back(ValueLocation::FromAPIObject(&params[i]));
+
+	auto result = cc->GetRegisterStackAdjustments(ret, paramObjs);
+
+	*outRegs = new uint32_t[result.size()];
+	*outAdjust = new int32_t[result.size()];
+	size_t i = 0;
+	for (auto it = result.begin(); it != result.end(); ++it, ++i)
+	{
+		(*outRegs)[i] = it->first;
+		(*outAdjust)[i] = it->second;
+	}
+	return result.size();
+}
+
+
+void CallingConvention::FreeRegisterStackAdjustmentsCallback(void*, uint32_t* regs, int32_t* adjust, size_t)
+{
+	delete[] regs;
+	delete[] adjust;
+}
+
+
 Ref<Architecture> CallingConvention::GetArchitecture() const
 {
 	return new CoreArchitecture(BNGetCallingConventionArchitecture(m_object));
@@ -407,6 +665,249 @@ Variable CallingConvention::GetIncomingVariableForParameterVariable(const Variab
 Variable CallingConvention::GetParameterVariableForIncomingVariable(const Variable& var, Function*)
 {
 	return BNGetDefaultParameterVariableForIncomingVariable(m_object, &var);
+}
+
+
+bool CallingConvention::IsReturnTypeRegisterCompatible(Type* type)
+{
+	return DefaultIsReturnTypeRegisterCompatible(type);
+}
+
+
+bool CallingConvention::DefaultIsReturnTypeRegisterCompatible(Type* type)
+{
+	return BNDefaultIsReturnTypeRegisterCompatible(m_object, type ? type->GetObject() : nullptr);
+}
+
+
+Variable CallingConvention::GetIndirectReturnValueLocation()
+{
+	return GetDefaultIndirectReturnValueLocation();
+}
+
+
+Variable CallingConvention::GetDefaultIndirectReturnValueLocation()
+{
+	return BNGetDefaultIndirectReturnValueLocation(m_object);
+}
+
+
+std::optional<Variable> CallingConvention::GetReturnedIndirectReturnValuePointer()
+{
+	return std::nullopt;
+}
+
+
+bool CallingConvention::IsArgumentTypeRegisterCompatible(Type* type)
+{
+	return DefaultIsArgumentTypeRegisterCompatible(type);
+}
+
+
+bool CallingConvention::DefaultIsArgumentTypeRegisterCompatible(Type* type)
+{
+	return BNDefaultIsArgumentTypeRegisterCompatible(m_object, type ? type->GetObject() : nullptr);
+}
+
+
+bool CallingConvention::AreNonRegisterArgumentsIndirect()
+{
+	return false;
+}
+
+
+bool CallingConvention::AreStackArgumentsNaturallyAligned()
+{
+	return false;
+}
+
+
+CallLayout CallingConvention::GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	const optional<set<uint32_t>>& permittedRegs)
+{
+	return GetDefaultCallLayout(returnValue, params, permittedRegs);
+}
+
+
+ValueLocation CallingConvention::GetReturnValueLocation(const ReturnValue& returnValue)
+{
+	return GetDefaultReturnValueLocation(returnValue);
+}
+
+
+vector<ValueLocation> CallingConvention::GetParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	return GetDefaultParameterLocations(returnValue, params, permittedRegs);
+}
+
+int64_t CallingConvention::GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
+	const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types)
+{
+	return GetDefaultStackAdjustmentForLocations(returnValue, locations, types);
+}
+
+
+std::map<uint32_t, int32_t> CallingConvention::GetRegisterStackAdjustments(
+	const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& params)
+{
+	return GetDefaultRegisterStackAdjustments(returnValue, params);
+}
+
+
+CallLayout CallingConvention::GetDefaultCallLayout(const ReturnValue& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	BNCallLayout layout;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		layout = BNGetDefaultCallLayout(m_object, &ret, paramArray, params.size(), regs, permittedRegs->size());
+		delete[] regs;
+	}
+	else
+	{
+		layout = BNGetDefaultCallLayoutDefaultPermittedArgs(m_object, &ret, paramArray, params.size());
+	}
+
+	ReturnValue::FreeAPIObject(&ret);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	CallLayout result = CallLayout::FromAPIObject(&layout);
+	BNFreeCallLayout(&layout);
+	return result;
+}
+
+
+ValueLocation CallingConvention::GetDefaultReturnValueLocation(const ReturnValue& returnValue)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNValueLocation location = BNGetDefaultReturnValueLocation(m_object, &ret);
+	ReturnValue::FreeAPIObject(&ret);
+
+	ValueLocation result = ValueLocation::FromAPIObject(&location);
+	BNFreeValueLocation(&location);
+	return result;
+}
+
+
+vector<ValueLocation> CallingConvention::GetDefaultParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	size_t locationCount = 0;
+	BNValueLocation* locations;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		locations = BNGetDefaultParameterLocations(
+			m_object, retOpt, paramArray, params.size(), regs, permittedRegs->size(), &locationCount);
+	}
+	else
+	{
+		locations = BNGetDefaultParameterLocationsDefaultPermittedArgs(
+			m_object, retOpt, paramArray, params.size(), &locationCount);
+	}
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	vector<ValueLocation> result;
+	result.reserve(locationCount);
+	for (size_t i = 0; i < locationCount; i++)
+		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
+	BNFreeValueLocationList(locations, locationCount);
+	return result;
+}
+
+
+int64_t CallingConvention::GetDefaultStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
+	const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	size_t count = locations.size();
+	if (types.size() < count)
+		count = types.size();
+	BNValueLocation* locationArray = new BNValueLocation[count];
+	for (size_t i = 0; i < count; i++)
+		locationArray[i] = locations[i].ToAPIObject();
+	const BNType** typeArray = new const BNType*[count];
+	for (size_t i = 0; i < count; i++)
+		typeArray[i] = types[i] ? types[i]->GetObject() : nullptr;
+
+	int64_t result = BNGetDefaultStackAdjustmentForLocations(m_object, retOpt, locationArray, typeArray, count);
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < count; i++)
+		ValueLocation::FreeAPIObject(&locationArray[i]);
+	delete[] locationArray;
+	delete[] typeArray;
+	return result;
+}
+
+
+std::map<uint32_t, int32_t> CallingConvention::GetDefaultRegisterStackAdjustments(
+	const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& params)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNValueLocation* paramArray = new BNValueLocation[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	uint32_t* regs = nullptr;
+	int32_t* adjust = nullptr;
+	size_t count = BNGetCallingConventionDefaultRegisterStackAdjustments(
+		m_object, retOpt, paramArray, params.size(), &regs, &adjust);
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		ValueLocation::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	map<uint32_t, int32_t> result;
+	for (size_t i = 0; i < count; i++)
+		result[regs[i]] = adjust[i];
+	BNFreeCallingConventionRegisterStackAdjustments(regs, adjust);
+	return result;
 }
 
 
@@ -565,4 +1066,199 @@ Variable CoreCallingConvention::GetIncomingVariableForParameterVariable(const Va
 Variable CoreCallingConvention::GetParameterVariableForIncomingVariable(const Variable& var, Function* func)
 {
 	return BNGetParameterVariableForIncomingVariable(m_object, &var, func ? func->GetObject() : nullptr);
+}
+
+
+bool CoreCallingConvention::IsReturnTypeRegisterCompatible(Type* type)
+{
+	return BNIsReturnTypeRegisterCompatible(m_object, type ? type->GetObject() : nullptr);
+}
+
+
+Variable CoreCallingConvention::GetIndirectReturnValueLocation()
+{
+	return BNGetIndirectReturnValueLocation(m_object);
+}
+
+
+std::optional<Variable> CoreCallingConvention::GetReturnedIndirectReturnValuePointer()
+{
+	BNVariable var;
+	if (BNGetReturnedIndirectReturnValuePointer(m_object, &var))
+		return var;
+	return std::nullopt;
+}
+
+
+bool CoreCallingConvention::IsArgumentTypeRegisterCompatible(Type* type)
+{
+	return BNIsArgumentTypeRegisterCompatible(m_object, type ? type->GetObject() : nullptr);
+}
+
+
+bool CoreCallingConvention::AreNonRegisterArgumentsIndirect()
+{
+	return BNAreNonRegisterArgumentsIndirect(m_object);
+}
+
+
+bool CoreCallingConvention::AreStackArgumentsNaturallyAligned()
+{
+	return BNAreStackArgumentsNaturallyAligned(m_object);
+}
+
+
+CallLayout CoreCallingConvention::GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	const optional<set<uint32_t>>& permittedRegs)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	BNCallLayout layout;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		layout = BNGetCallLayout(m_object, &ret, paramArray, params.size(), regs, permittedRegs->size());
+		delete[] regs;
+	}
+	else
+	{
+		layout = BNGetCallLayoutDefaultPermittedArgs(m_object, &ret, paramArray, params.size());
+	}
+
+	ReturnValue::FreeAPIObject(&ret);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	CallLayout result = CallLayout::FromAPIObject(&layout);
+	BNFreeCallLayout(&layout);
+	return result;
+}
+
+
+ValueLocation CoreCallingConvention::GetReturnValueLocation(const ReturnValue& returnValue)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNValueLocation location = BNGetReturnValueLocation(m_object, &ret);
+	ReturnValue::FreeAPIObject(&ret);
+
+	ValueLocation result = ValueLocation::FromAPIObject(&location);
+	BNFreeValueLocation(&location);
+	return result;
+}
+
+
+vector<ValueLocation> CoreCallingConvention::GetParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	size_t locationCount = 0;
+	BNValueLocation* locations;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		locations = BNGetParameterLocations(
+			m_object, retOpt, paramArray, params.size(), regs, permittedRegs->size(), &locationCount);
+	}
+	else
+	{
+		locations =
+			BNGetParameterLocationsDefaultPermittedArgs(m_object, retOpt, paramArray, params.size(), &locationCount);
+	}
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	vector<ValueLocation> result;
+	result.reserve(locationCount);
+	for (size_t i = 0; i < locationCount; i++)
+		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
+	BNFreeValueLocationList(locations, locationCount);
+	return result;
+}
+
+
+int64_t CoreCallingConvention::GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
+	const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	size_t count = locations.size();
+	if (types.size() < count)
+		count = types.size();
+	BNValueLocation* locationArray = new BNValueLocation[count];
+	for (size_t i = 0; i < count; i++)
+		locationArray[i] = locations[i].ToAPIObject();
+	const BNType** typeArray = new const BNType*[count];
+	for (size_t i = 0; i < count; i++)
+		typeArray[i] = types[i] ? types[i]->GetObject() : nullptr;
+
+	int64_t result = BNGetStackAdjustmentForLocations(m_object, retOpt, locationArray, typeArray, count);
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < count; i++)
+		ValueLocation::FreeAPIObject(&locationArray[i]);
+	delete[] locationArray;
+	delete[] typeArray;
+	return result;
+}
+
+
+std::map<uint32_t, int32_t> CoreCallingConvention::GetRegisterStackAdjustments(
+	const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& params)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNValueLocation* paramArray = new BNValueLocation[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	uint32_t* regs = nullptr;
+	int32_t* adjust = nullptr;
+	size_t count =
+		BNGetCallingConventionRegisterStackAdjustments(m_object, retOpt, paramArray, params.size(), &regs, &adjust);
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		ValueLocation::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	map<uint32_t, int32_t> result;
+	for (size_t i = 0; i < count; i++)
+		result[regs[i]] = adjust[i];
+	BNFreeCallingConventionRegisterStackAdjustments(regs, adjust);
+	return result;
 }

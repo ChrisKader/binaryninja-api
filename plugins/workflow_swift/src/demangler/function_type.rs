@@ -1,8 +1,7 @@
-use binaryninja::architecture::{ArchitectureExt, CoreArchitecture, Register};
+use binaryninja::architecture::{ArchitectureExt, CoreArchitecture};
 use binaryninja::confidence::Conf;
 use binaryninja::rc::Ref;
-use binaryninja::types::{FunctionParameter, Type};
-use binaryninja::variable::{Variable, VariableSourceType};
+use binaryninja::types::{FunctionParameter, Type, ValueLocation};
 use swift_demangler::{
     Accessor, AccessorKind, ConstructorKind, HasFunctionSignature, HasModule, Metadata,
     MetadataKind, Symbol,
@@ -29,21 +28,17 @@ impl PlatformAbi {
         }
     }
 
-    fn error_location(&self) -> Option<Variable> {
-        self.register_variable(self.error_reg)
+    fn error_location(&self) -> Option<ValueLocation> {
+        self.register_location(self.error_reg)
     }
 
-    fn async_context_location(&self) -> Option<Variable> {
-        self.register_variable(self.async_context_reg)
+    fn async_context_location(&self) -> Option<ValueLocation> {
+        self.register_location(self.async_context_reg)
     }
 
-    fn register_variable(&self, name: &str) -> Option<Variable> {
+    fn register_location(&self, name: &str) -> Option<ValueLocation> {
         let reg = self.arch.register_by_name(name)?;
-        Some(Variable::new(
-            VariableSourceType::RegisterVariableSourceType,
-            0,
-            reg.id().0 as i64,
-        ))
+        Some(ValueLocation::from_register(reg))
     }
 }
 
