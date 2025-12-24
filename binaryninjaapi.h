@@ -23068,6 +23068,8 @@ namespace BinaryNinja {
 
 	class DatabaseObject: public CoreRefCountObject<BNDatabaseObject, BNNewDatabaseObjectReference, BNFreeDatabaseObject>
 	{
+		Ref<DatabaseObject> m_parent;
+
 	public:
 		explicit DatabaseObject(BNDatabaseObject* database);
 
