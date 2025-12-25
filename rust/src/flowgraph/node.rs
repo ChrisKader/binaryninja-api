@@ -1,13 +1,26 @@
+//! Represents a single node in a flow graph, typically backed by a [`BasicBlock`].
+
 use crate::architecture::BranchType;
 use crate::basic_block::{BasicBlock, BlockContext};
 use crate::disassembly::DisassemblyTextLine;
-use crate::flowgraph::edge::{EdgeStyle, FlowGraphEdge};
+use crate::flowgraph::edge::{EdgeStyle, FlowGraphEdge, Point};
 use crate::flowgraph::FlowGraph;
 use crate::function::HighlightColor;
 use crate::rc::{Array, CoreArrayProvider, CoreArrayProviderInner, Guard, Ref, RefCountable};
 use binaryninjacore_sys::*;
 use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
 
+// Used for documentation purposes.
+#[allow(unused)]
+use crate::flowgraph::layout::FlowGraphLayout;
+
+/// The node of a flow graph containing lines of text tokens, and edges flowing into and out of it.
+///
+/// A node can also be backed by a [`BasicBlock`], which makes the node function as a basic block node.
+///
+/// A node is positioned absolutely within the flow graph and is typically positioned by a [`FlowGraphLayout`].
+#[repr(transparent)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct FlowGraphNode {
     pub(crate) handle: *mut BNFlowGraphNode,
@@ -69,6 +82,13 @@ impl FlowGraphNode {
         (pos_x, pos_y)
     }
 
+    /// Returns the size of the node in width, height form.
+    pub fn size(&self) -> (i32, i32) {
+        let w = unsafe { BNGetFlowGraphNodeWidth(self.handle) };
+        let h = unsafe { BNGetFlowGraphNodeHeight(self.handle) };
+        (w, h)
+    }
+
     /// Sets the graph position of the node.
     pub fn set_position(&self, x: i32, y: i32) {
         unsafe { BNFlowGraphNodeSetX(self.handle, x) };
@@ -84,6 +104,7 @@ impl FlowGraphNode {
         unsafe { BNSetFlowGraphNodeHighlight(self.handle, highlight.into()) };
     }
 
+    /// Edges flowing _into_ this node.
     pub fn incoming_edges(&self) -> Array<FlowGraphEdge> {
         let mut count = 0;
         let result = unsafe { BNGetFlowGraphNodeIncomingEdges(self.handle, &mut count) };
@@ -91,6 +112,7 @@ impl FlowGraphNode {
         unsafe { Array::new(result, count, ()) }
     }
 
+    /// Edges flowing _out of_ this node.
     pub fn outgoing_edges(&self) -> Array<FlowGraphEdge> {
         let mut count = 0;
         let result = unsafe { BNGetFlowGraphNodeOutgoingEdges(self.handle, &mut count) };
@@ -108,6 +130,28 @@ impl FlowGraphNode {
         unsafe {
             BNAddFlowGraphNodeOutgoingEdge(self.handle, type_, target.handle, edge_style.into())
         }
+    }
+
+    /// Sets the outgoing edge points for `edge_idx`.
+    ///
+    /// This is typically called when laying out a [`FlowGraph`] using [`FlowGraphLayout`], without
+    /// calling this for all given node edges in a graph; the nodes will be rendered without any
+    /// edges between them, as edge routing is _not_ automatic.
+    pub fn set_outgoing_edge_points(&self, edge_idx: usize, points: &[Point]) {
+        let mut points_raw: Vec<BNPoint> = points.iter().map(|p| (*p).into()).collect();
+        unsafe {
+            BNFlowGraphNodeSetOutgoingEdgePoints(
+                self.handle,
+                edge_idx,
+                points_raw.as_mut_ptr(),
+                points.len(),
+            )
+        };
+    }
+
+    // TODO: Document that this is for flow graph layout
+    pub fn set_visibility_region(&self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { BNFlowGraphNodeSetVisibilityRegion(self.handle, x, y, w, h) };
     }
 }
 
