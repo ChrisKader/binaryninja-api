@@ -478,6 +478,31 @@ class ValueLocationComponent:
 			struct.returnedPointer = self.returned_pointer.to_BNVariable()
 		return struct
 
+	def to_string(self, arch: Optional['architecture.Architecture']):
+		if arch is None:
+			if isinstance(self.var, variable.ArchitectureVariable):
+				arch = self.var.arch
+			elif isinstance(self.var, variable.Variable):
+				arch = self.var.function.arch
+		if arch is None:
+			if self.indirect:
+				indirect = " indirect"
+			else:
+				indirect = ""
+			if self.returned_pointer is None:
+				ret_ptr = ""
+			else:
+				ret_ptr = f" returned ptr {repr(self.returned_pointer)}"
+			return f"{repr(self.var)} offset {hex(self.offset)} size {repr(self.size)}{indirect}{ret_ptr}"
+		struct = self._to_core_struct()
+		return core.BNValueLocationComponentToString(struct, arch.handle)
+
+	def __str__(self):
+		return self.to_string(None)
+
+	def __repr__(self):
+		return f"<component {self.to_string(None)}>"
+
 
 @dataclass
 class ValueLocation:
@@ -502,6 +527,46 @@ class ValueLocation:
 	def with_confidence(self, confidence: int) -> 'ValueLocationWithConfidence':
 		return ValueLocationWithConfidence(self, confidence)
 
+	def variable_for_parameter(self, idx: int) -> Optional['variable.CoreVariable']:
+		struct = self._to_core_struct()
+		var = core.BNVariable()
+		if core.BNGetValueLocationVariableForParameter(struct, var, idx):
+			return variable.CoreVariable.from_BNVariable(var)
+		return None
+
+	@staticmethod
+	def parse(string: str, arch: 'architecture.Architecture') -> 'ValueLocation':
+		struct = core.BNValueLocation()
+		error = ctypes.c_char_p()
+		if not core.BNParseValueLocation(string, arch.handle, struct, error):
+			assert error.value is not None, "core.BNParseValueLocation returned 'error' set to None"
+			error_str = error.value.decode("utf-8")
+			core.free_string(error)
+			raise SyntaxError(error_str)
+		result = ValueLocation._from_core_struct(struct, arch)
+		core.BNFreeValueLocation(struct)
+		return result
+
+	def to_string(self, arch: Optional['architecture.Architecture']):
+		if arch is None:
+			for component in self.components:
+				if isinstance(component.var, variable.ArchitectureVariable):
+					arch = component.var.arch
+					break
+				if isinstance(component.var, variable.Variable):
+					arch = component.var.function.arch
+					break
+		if arch is None:
+			return repr(self.components)
+		struct = self._to_core_struct()
+		return core.BNValueLocationToString(struct, arch.handle)
+
+	def __str__(self):
+		return self.to_string(None)
+
+	def __repr__(self):
+		return f"<value location {self.to_string(None)}>"
+
 
 @dataclass
 class ValueLocationWithConfidence:
@@ -517,6 +582,9 @@ class ValueLocationWithConfidence:
 		elif location is not None:
 			return ValueLocation([ValueLocationComponent(location)]).with_confidence(core.max_confidence)
 		return None
+
+	def __repr__(self):
+		return f"<value location {self.location.to_string(None)} confidence {self.confidence}>"
 
 
 @dataclass
@@ -569,7 +637,7 @@ class FunctionParameter:
 
 	def __repr__(self):
 		ic = self.type.immutable_copy()
-		if self.location is not None:
+		if (self.location is not None) and (str(self.location) != self.name):
 			return f"{ic.get_string_before_name()} {self.name}{ic.get_string_after_name()} @ {self.location}"
 		return f"{ic.get_string_before_name()} {self.name}{ic.get_string_after_name()}"
 

@@ -1291,7 +1291,7 @@ impl ValueLocation {
         }
     }
 
-    pub(crate) fn into_rust_raw(value: &Self) -> BNValueLocation {
+    pub fn into_rust_raw(value: &Self) -> BNValueLocation {
         let components: Box<[BNValueLocationComponent]> = value
             .components
             .iter()
@@ -1304,7 +1304,7 @@ impl ValueLocation {
     }
 
     /// Free a RUST ALLOCATED possible value set. Do not use this with CORE ALLOCATED values.
-    pub(crate) fn free_rust_raw(value: BNValueLocation) {
+    pub fn free_rust_raw(value: BNValueLocation) {
         let raw_components =
             unsafe { std::slice::from_raw_parts_mut(value.components, value.count) };
         let _ = unsafe { Box::from_raw(raw_components) };

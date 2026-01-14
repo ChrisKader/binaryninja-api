@@ -10562,6 +10562,8 @@ namespace BinaryNinja {
 
 		static ValueLocationComponent FromAPIObject(const BNValueLocationComponent* loc);
 		BNValueLocationComponent ToAPIObject() const;
+
+		std::string ToString(Architecture* arch) const;
 	};
 
 	struct ValueLocation
@@ -10591,6 +10593,9 @@ namespace BinaryNinja {
 		static ValueLocation FromAPIObject(const BNValueLocation* loc);
 		BNValueLocation ToAPIObject() const;
 		static void FreeAPIObject(BNValueLocation* loc);
+
+		static std::optional<ValueLocation> Parse(const std::string& str, Architecture* arch, std::string& error);
+		std::string ToString(Architecture* arch) const;
 	};
 
 	struct FunctionParameter

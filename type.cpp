@@ -591,6 +591,16 @@ BNValueLocationComponent ValueLocationComponent::ToAPIObject() const
 }
 
 
+std::string ValueLocationComponent::ToString(Architecture* arch) const
+{
+	auto componentRaw = ToAPIObject();
+	char* str = BNValueLocationComponentToString(&componentRaw, arch->GetObject());
+	string result = str;
+	BNFreeString(str);
+	return result;
+}
+
+
 std::optional<Variable> ValueLocation::GetVariableForReturnValue() const
 {
 	BNValueLocation loc = ToAPIObject();
@@ -677,6 +687,34 @@ BNValueLocation ValueLocation::ToAPIObject() const
 void ValueLocation::FreeAPIObject(BNValueLocation* loc)
 {
 	delete[] loc->components;
+}
+
+
+std::optional<ValueLocation> ValueLocation::Parse(const std::string& str, Architecture* arch, std::string& error)
+{
+	BNValueLocation locationRaw;
+	char* errorRaw;
+	if (BNParseValueLocation(str.c_str(), arch->GetObject(), &locationRaw, &errorRaw))
+	{
+		auto location = FromAPIObject(&locationRaw);
+		BNFreeValueLocation(&locationRaw);
+		return location;
+	}
+
+	error = errorRaw;
+	BNFreeString(errorRaw);
+	return std::nullopt;
+}
+
+
+std::string ValueLocation::ToString(Architecture* arch) const
+{
+	auto locationRaw = ToAPIObject();
+	char* str = BNValueLocationToString(&locationRaw, arch->GetObject());
+	FreeAPIObject(&locationRaw);
+	string result = str;
+	BNFreeString(str);
+	return result;
 }
 
 

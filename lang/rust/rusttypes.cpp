@@ -177,7 +177,6 @@ vector<InstructionTextToken> RustTypePrinter::GetTypeTokensAfterNameInternal(
 
 			if (!params[i].defaultLocation && platform && var.has_value())
 			{
-				// TODO: Emit a syntax for parameters spanning multiple storage locations
 				switch (var->type)
 				{
 				case RegisterVariableSourceType:
@@ -202,9 +201,13 @@ vector<InstructionTextToken> RustTypePrinter::GetTypeTokensAfterNameInternal(
 					tokens.emplace_back(IntegerToken, storageStr, var->storage);
 					break;
 				}
-				case CompositeReturnValueSourceType:
-				case CompositeParameterSourceType:
+				default:
+				{
+					string locationStr = params[i].location.ToString(platform->GetArchitecture());
+					tokens.emplace_back(TextToken, " @ ");
+					tokens.emplace_back(ValueLocationToken, locationStr);
 					break;
+				}
 				}
 			}
 		}
@@ -235,6 +238,13 @@ vector<InstructionTextToken> RustTypePrinter::GetTypeTokensAfterNameInternal(
 					i.context = FunctionReturnTokenContext;
 			}
 			tokens.insert(tokens.end(), retn.begin(), retn.end());
+			if (!type->GetReturnValue().defaultLocation)
+			{
+				auto location = type->GetReturnValue().location;
+				string locationStr = location->ToString(platform->GetArchitecture());
+				tokens.emplace_back(TextToken, " @ ");
+				tokens.emplace_back(location.GetCombinedConfidence(baseConfidence), ValueLocationToken, locationStr);
+			}
 		}
 		break;
 	}

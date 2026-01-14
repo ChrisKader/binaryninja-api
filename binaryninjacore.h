@@ -478,6 +478,7 @@ extern "C"
 		BaseStructureNameToken = 37,
 		BaseStructureSeparatorToken = 38,
 		BraceToken = 39,
+		ValueLocationToken = 40,
 		// The following are output by the analysis system automatically, these should
 		// not be used directly by the architecture plugins
 		CodeSymbolToken = 64,
@@ -7165,6 +7166,10 @@ extern "C"
 	BINARYNINJACOREAPI BNReturnValue BNGetTypeReturnValue(BNType* type);
 	BINARYNINJACOREAPI bool BNIsTypeReturnValueDefaultLocation(BNType* type);
 	BINARYNINJACOREAPI BNValueLocationWithConfidence BNGetTypeReturnValueLocation(BNType* type);
+	BINARYNINJACOREAPI bool BNParseValueLocation(
+		const char* str, BNArchitecture* arch, BNValueLocation* location, char** error);
+	BINARYNINJACOREAPI char* BNValueLocationToString(BNValueLocation* location, BNArchitecture* arch);
+	BINARYNINJACOREAPI char* BNValueLocationComponentToString(BNValueLocationComponent* component, BNArchitecture* arch);
 	BINARYNINJACOREAPI void BNFreeValueLocation(BNValueLocation* location);
 	BINARYNINJACOREAPI BNCallingConventionWithConfidence BNGetTypeCallingConvention(BNType* type);
 	BINARYNINJACOREAPI BNCallingConventionName BNGetTypeCallingConventionName(BNType* type);

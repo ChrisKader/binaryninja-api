@@ -1136,23 +1136,33 @@ class PseudoPythonFunctionType(LanguageRepresentationFunctionType):
         tokens.append(InstructionTextToken(InstructionTextTokenType.KeywordToken, "def "))
         tokens.append(InstructionTextToken(InstructionTextTokenType.CodeSymbolToken, func.name, value=func.start))
         tokens.append(InstructionTextToken(InstructionTextTokenType.BraceToken, "("))
+        params = func.type.parameters
         for (i, param) in enumerate(func.type.parameters_with_all_locations):
             if i > 0:
                 tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, ", "))
+            var = param.location.variable_for_parameter(i)
             tokens.append(InstructionTextToken(InstructionTextTokenType.ArgumentNameToken, param.name,
                                                context=InstructionTextTokenContext.LocalVariableTokenContext,
-                                               address=param.location.identifier))
+                                               address=var.identifier))
             tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, ": "))
             for token in param.type.get_tokens():
                 token.context = InstructionTextTokenContext.LocalVariableTokenContext
-                token.address = param.location.identifier
+                token.address = var.identifier
                 tokens.append(token)
+            if i < len(params) and params[i].location is not None:
+                tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, " @ "))
+                tokens.append(InstructionTextToken(InstructionTextTokenType.ValueLocationToken,
+                                                   params[i].location.to_string(func.arch)))
         tokens.append(InstructionTextToken(InstructionTextTokenType.BraceToken, ")"))
         if func.can_return.value and func.type.return_value is not None and not isinstance(func.type.return_value, VoidType):
             tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, " -> "))
             for token in func.type.return_value.get_tokens():
                 token.context = InstructionTextTokenContext.FunctionReturnTokenContext
                 tokens.append(token)
+            if func.type.return_value_location is not None:
+                tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, " @ "))
+                tokens.append(InstructionTextToken(InstructionTextTokenType.ValueLocationToken,
+                    func.type.return_value_location.location.to_string(func.arch)))
         tokens.append(InstructionTextToken(InstructionTextTokenType.TextToken, ":"))
         return [DisassemblyTextLine(tokens, func.start)]
 
