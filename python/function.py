@@ -1413,7 +1413,7 @@ class Function:
 		result = core.BNGetFunctionCallingConvention(self.handle)
 		if not result.convention:
 			return None
-		return callingconvention.CallingConvention(None, handle=result.convention, confidence=result.confidence)
+		return callingconvention.CoreCallingConvention(handle=result.convention, confidence=result.confidence)
 
 	@calling_convention.setter
 	def calling_convention(self, value: Optional['callingconvention.CallingConvention']) -> None:

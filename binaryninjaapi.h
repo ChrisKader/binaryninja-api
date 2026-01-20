@@ -17854,17 +17854,19 @@ namespace BinaryNinja {
 		    void* ctxt, const BNVariable* var, BNFunction* func, BNVariable* result);
 
 		static bool IsReturnTypeRegisterCompatibleCallback(void* ctxt, BNType* type);
-		static BNVariable GetIndirectReturnValueLocationCallback(void* ctxt);
+		static void GetIndirectReturnValueLocationCallback(void* ctxt, BNVariable* outVar);
 		static bool GetReturnedIndirectReturnValuePointerCallback(void* ctxt, BNVariable* outVar);
 
 		static bool IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNType* type);
 		static bool AreNonRegisterArgumentsIndirectCallback(void* ctxt);
 		static bool AreStackArgumentsNaturallyAlignedCallback(void* ctxt);
 
-		static BNCallLayout GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
-			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount);
+		static void GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
+			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
+			BNCallLayout* result);
 		static void FreeCallLayoutCallback(void* ctxt, BNCallLayout* layout);
-		static BNValueLocation GetReturnValueLocationCallback(void* ctxt, BNReturnValue* returnValue);
+		static void GetReturnValueLocationCallback(
+			void* ctxt, BNReturnValue* returnValue, BNValueLocation* outLocation);
 		static void FreeValueLocationCallback(void* ctxt, BNValueLocation* location);
 		static BNValueLocation* GetParameterLocationsCallback(void* ctxt, BNValueLocation* returnValue,
 			BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,

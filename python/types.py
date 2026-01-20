@@ -647,6 +647,16 @@ class FunctionParameter:
 	def mutable_copy(self) -> 'FunctionParameter':
 		return FunctionParameter(self.type.mutable_copy(), self.name, self.location)
 
+	@staticmethod
+	def _from_core_struct(struct: 'core.BNFunctionParameter', arch: Optional['architecture.Architecture'] = None) -> 'FunctionParameter':
+		name = struct.name
+		ty = Type.from_core_struct(struct.type).with_confidence(struct.typeConfidence)
+		if struct.defaultLocation:
+			location = None
+		else:
+			location = ValueLocation._from_core_struct(struct.location, arch)
+		return FunctionParameter(ty, name, location)
+
 
 @dataclass(frozen=True)
 class OffsetWithConfidence:
@@ -1455,7 +1465,7 @@ class FunctionBuilder(TypeBuilder):
 	@property
 	def calling_convention(self) -> 'callingconvention.CallingConvention':
 		cc = core.BNGetTypeBuilderCallingConvention(self._handle)
-		return callingconvention.CallingConvention(handle=core.BNNewCallingConventionReference(cc.convention))
+		return callingconvention.CoreCallingConvention(handle=core.BNNewCallingConventionReference(cc.convention))
 
 	@property
 	def can_return(self) -> BoolWithConfidence:
@@ -3445,7 +3455,7 @@ class FunctionType(Type):
 		result = core.BNGetTypeCallingConvention(self._handle)
 		if not result.convention:
 			return None
-		return callingconvention.CallingConvention(None, handle=result.convention, confidence=result.confidence)
+		return callingconvention.CoreCallingConvention(handle=result.convention, confidence=result.confidence)
 
 	@property
 	def parameters(self) -> List[FunctionParameter]:

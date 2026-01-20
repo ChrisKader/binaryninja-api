@@ -353,10 +353,10 @@ bool CallingConvention::IsReturnTypeRegisterCompatibleCallback(void* ctxt, BNTyp
 }
 
 
-BNVariable CallingConvention::GetIndirectReturnValueLocationCallback(void* ctxt)
+void CallingConvention::GetIndirectReturnValueLocationCallback(void* ctxt, BNVariable* outVar)
 {
 	CallbackRef<CallingConvention> cc(ctxt);
-	return cc->GetIndirectReturnValueLocation();
+	*outVar = cc->GetIndirectReturnValueLocation();
 }
 
 
@@ -394,9 +394,9 @@ bool CallingConvention::AreStackArgumentsNaturallyAlignedCallback(void* ctxt)
 }
 
 
-BNCallLayout CallingConvention::GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue,
+void CallingConvention::GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue,
 	BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
-	size_t permittedRegCount)
+	size_t permittedRegCount, BNCallLayout* result)
 {
 	CallbackRef<CallingConvention> cc(ctxt);
 	auto ret = ReturnValue::FromAPIObject(returnValue);
@@ -414,7 +414,7 @@ BNCallLayout CallingConvention::GetCallLayoutCallback(void* ctxt, BNReturnValue*
 	}
 
 	auto layout = cc->GetCallLayout(ret, paramObjs, regOpt);
-	return layout.ToAPIObject();
+	*result = layout.ToAPIObject();
 }
 
 
@@ -424,12 +424,13 @@ void CallingConvention::FreeCallLayoutCallback(void*, BNCallLayout* layout)
 }
 
 
-BNValueLocation CallingConvention::GetReturnValueLocationCallback(void* ctxt, BNReturnValue* returnValue)
+void CallingConvention::GetReturnValueLocationCallback(
+	void* ctxt, BNReturnValue* returnValue, BNValueLocation* outLocation)
 {
 	CallbackRef<CallingConvention> cc(ctxt);
 	ReturnValue ret = ReturnValue::FromAPIObject(returnValue);
 	ValueLocation location = cc->GetReturnValueLocation(ret);
-	return location.ToAPIObject();
+	*outLocation = location.ToAPIObject();
 }
 
 

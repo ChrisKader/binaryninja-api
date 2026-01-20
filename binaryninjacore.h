@@ -2916,7 +2916,7 @@ extern "C"
 		void (*getIncomingFlagValue)(void* ctxt, uint32_t flag, BNFunction* func, BNRegisterValue* result);
 
 		bool (*isReturnTypeRegisterCompatible)(void* ctxt, BNType* type);
-		BNVariable (*getIndirectReturnValueLocation)(void* ctxt);
+		void (*getIndirectReturnValueLocation)(void* ctxt, BNVariable* outVar);
 		bool (*getReturnedIndirectReturnValuePointer)(void* ctxt, BNVariable* outVar);
 
 		bool (*isArgumentTypeRegisterCompatible)(void* ctxt, BNType* type);
@@ -2930,10 +2930,11 @@ extern "C"
 
 		bool (*areArgumentRegistersUsedForVarArgs)(void* ctxt);
 
-		BNCallLayout (*getCallLayout)(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
-			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount);
+		void (*getCallLayout)(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
+			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
+			BNCallLayout* result);
 		void (*freeCallLayout)(void* ctxt, BNCallLayout* layout);
-		BNValueLocation (*getReturnValueLocation)(void* ctxt, BNReturnValue* returnValue);
+		void (*getReturnValueLocation)(void* ctxt, BNReturnValue* returnValue, BNValueLocation* outLocation);
 		void (*freeValueLocation)(void* ctxt, BNValueLocation* location);
 		BNValueLocation* (*getParameterLocations)(void* ctxt, BNValueLocation* returnValue, BNFunctionParameter* params,
 			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
