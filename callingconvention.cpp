@@ -115,14 +115,17 @@ CallingConvention::CallingConvention(Architecture* arch, const string& name)
 	cc.getIndirectReturnValueLocation = GetIndirectReturnValueLocationCallback;
 	cc.getReturnedIndirectReturnValuePointer = GetReturnedIndirectReturnValuePointerCallback;
 	cc.isArgumentTypeRegisterCompatible = IsArgumentTypeRegisterCompatibleCallback;
-	cc.areNonRegisterArgumentsIndirect = AreNonRegisterArgumentsIndirectCallback;
+	cc.isNonRegisterArgumentIndirect = IsNonRegisterArgumentIndirectCallback;
 	cc.areStackArgumentsNaturallyAligned = AreStackArgumentsNaturallyAlignedCallback;
+	cc.areStackArgumentsPushedLeftToRight = AreStackArgumentsPushedLeftToRightCallback;
 	cc.getCallLayout = GetCallLayoutCallback;
 	cc.freeCallLayout = FreeCallLayoutCallback;
 	cc.getReturnValueLocation = GetReturnValueLocationCallback;
 	cc.freeValueLocation = FreeValueLocationCallback;
 	cc.getParameterLocations = GetParameterLocationsCallback;
 	cc.freeParameterLocations = FreeParameterLocationsCallback;
+	cc.getParameterOrderingForVariables = GetParameterOrderingForVariablesCallback;
+	cc.freeVariableList = FreeVariableListCallback;
 	cc.getStackAdjustmentForLocations = GetStackAdjustmentForLocationsCallback;
 	cc.getRegisterStackAdjustments = GetRegisterStackAdjustmentsCallback;
 	cc.freeRegisterStackAdjustments = FreeRegisterStackAdjustmentsCallback;
@@ -380,10 +383,13 @@ bool CallingConvention::IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNT
 }
 
 
-bool CallingConvention::AreNonRegisterArgumentsIndirectCallback(void* ctxt)
+bool CallingConvention::IsNonRegisterArgumentIndirectCallback(void* ctxt, BNType* type)
 {
 	CallbackRef<CallingConvention> cc(ctxt);
-	return cc->AreNonRegisterArgumentsIndirect();
+	Ref<Type> typeObj;
+	if (type)
+		typeObj = new Type(BNNewTypeReference(type));
+	return cc->IsNonRegisterArgumentIndirect(typeObj);
 }
 
 
@@ -391,6 +397,13 @@ bool CallingConvention::AreStackArgumentsNaturallyAlignedCallback(void* ctxt)
 {
 	CallbackRef<CallingConvention> cc(ctxt);
 	return cc->AreStackArgumentsNaturallyAligned();
+}
+
+
+bool CallingConvention::AreStackArgumentsPushedLeftToRightCallback(void* ctxt)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	return cc->AreStackArgumentsPushedLeftToRight();
 }
 
 
@@ -476,6 +489,30 @@ void CallingConvention::FreeParameterLocationsCallback(void*, BNValueLocation* l
 	for (size_t i = 0; i < count; i++)
 		ValueLocation::FreeAPIObject(&locations[i]);
 	delete[] locations;
+}
+
+
+BNVariable* CallingConvention::GetParameterOrderingForVariablesCallback(
+	void* ctxt, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	map<Variable, Ref<Type>> params;
+	for (size_t i = 0; i < paramCount; i++)
+		params[vars[i]] = types[i] ? new Type(BNNewTypeReference(types[i])) : nullptr;
+
+	auto outVars = cc->GetParameterOrderingForVariables(params);
+
+	*outCount = outVars.size();
+	BNVariable* result = new BNVariable[outVars.size()];
+	for (size_t i = 0; i < outVars.size(); i++)
+		result[i] = outVars[i];
+	return result;
+}
+
+
+void CallingConvention::FreeVariableListCallback(void*, BNVariable* vars, size_t)
+{
+	delete[] vars;
 }
 
 
@@ -711,13 +748,19 @@ bool CallingConvention::DefaultIsArgumentTypeRegisterCompatible(Type* type)
 }
 
 
-bool CallingConvention::AreNonRegisterArgumentsIndirect()
+bool CallingConvention::IsNonRegisterArgumentIndirect(Type*)
 {
 	return false;
 }
 
 
 bool CallingConvention::AreStackArgumentsNaturallyAligned()
+{
+	return false;
+}
+
+
+bool CallingConvention::AreStackArgumentsPushedLeftToRight()
 {
 	return false;
 }
@@ -741,6 +784,13 @@ vector<ValueLocation> CallingConvention::GetParameterLocations(const optional<Va
 {
 	return GetDefaultParameterLocations(returnValue, params, permittedRegs);
 }
+
+
+std::vector<Variable> CallingConvention::GetParameterOrderingForVariables(const std::map<Variable, Ref<Type>>& params)
+{
+	return GetDefaultParameterOrderingForVariables(params);
+}
+
 
 int64_t CallingConvention::GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
 	const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types)
@@ -844,6 +894,33 @@ vector<ValueLocation> CallingConvention::GetDefaultParameterLocations(const opti
 	for (size_t i = 0; i < locationCount; i++)
 		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
 	BNFreeValueLocationList(locations, locationCount);
+	return result;
+}
+
+
+std::vector<Variable> CallingConvention::GetDefaultParameterOrderingForVariables(
+	const std::map<Variable, Ref<Type>>& params)
+{
+	BNVariable* vars = new BNVariable[params.size()];
+	const BNType** types = new const BNType*[params.size()];
+	size_t i = 0;
+	for (auto it = params.begin(); it != params.end(); ++it, ++i)
+	{
+		vars[i] = it->first;
+		types[i] = it->second.GetPtr() ? it->second->GetObject() : nullptr;
+	}
+
+	size_t outCount = 0;
+	auto outVars = BNGetDefaultParameterOrderingForVariables(m_object, vars, types, params.size(), &outCount);
+
+	delete[] vars;
+	delete[] types;
+
+	vector<Variable> result;
+	result.reserve(outCount);
+	for (i = 0; i < outCount; i++)
+		result.emplace_back(outVars[i]);
+	BNFreeVariableList(outVars);
 	return result;
 }
 
@@ -1097,15 +1174,21 @@ bool CoreCallingConvention::IsArgumentTypeRegisterCompatible(Type* type)
 }
 
 
-bool CoreCallingConvention::AreNonRegisterArgumentsIndirect()
+bool CoreCallingConvention::IsNonRegisterArgumentIndirect(Type* type)
 {
-	return BNAreNonRegisterArgumentsIndirect(m_object);
+	return BNIsNonRegisterArgumentIndirect(m_object, type ? type->GetObject() : nullptr);
 }
 
 
 bool CoreCallingConvention::AreStackArgumentsNaturallyAligned()
 {
 	return BNAreStackArgumentsNaturallyAligned(m_object);
+}
+
+
+bool CoreCallingConvention::AreStackArgumentsPushedLeftToRight()
+{
+	return BNAreStackArgumentsPushedLeftToRight(m_object);
 }
 
 
@@ -1197,6 +1280,33 @@ vector<ValueLocation> CoreCallingConvention::GetParameterLocations(const optiona
 	for (size_t i = 0; i < locationCount; i++)
 		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
 	BNFreeValueLocationList(locations, locationCount);
+	return result;
+}
+
+
+std::vector<Variable> CoreCallingConvention::GetParameterOrderingForVariables(
+	const std::map<Variable, Ref<Type>>& params)
+{
+	BNVariable* vars = new BNVariable[params.size()];
+	const BNType** types = new const BNType*[params.size()];
+	size_t i = 0;
+	for (auto it = params.begin(); it != params.end(); ++it, ++i)
+	{
+		vars[i] = it->first;
+		types[i] = it->second.GetPtr() ? it->second->GetObject() : nullptr;
+	}
+
+	size_t outCount = 0;
+	auto outVars = BNGetParameterOrderingForVariables(m_object, vars, types, params.size(), &outCount);
+
+	delete[] vars;
+	delete[] types;
+
+	vector<Variable> result;
+	result.reserve(outCount);
+	for (i = 0; i < outCount; i++)
+		result.emplace_back(outVars[i]);
+	BNFreeVariableList(outVars);
 	return result;
 }
 

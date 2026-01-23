@@ -2678,7 +2678,7 @@ class Arm64CallingConvention : public CallingConvention
 	}
 
 
-	bool AreNonRegisterArgumentsIndirect() override
+	bool IsNonRegisterArgumentIndirect(Type*) override
 	{
 		return true;
 	}

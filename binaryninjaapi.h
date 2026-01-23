@@ -17858,8 +17858,9 @@ namespace BinaryNinja {
 		static bool GetReturnedIndirectReturnValuePointerCallback(void* ctxt, BNVariable* outVar);
 
 		static bool IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNType* type);
-		static bool AreNonRegisterArgumentsIndirectCallback(void* ctxt);
+		static bool IsNonRegisterArgumentIndirectCallback(void* ctxt, BNType* type);
 		static bool AreStackArgumentsNaturallyAlignedCallback(void* ctxt);
+		static bool AreStackArgumentsPushedLeftToRightCallback(void* ctxt);
 
 		static void GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
 			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
@@ -17872,6 +17873,9 @@ namespace BinaryNinja {
 			BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
 			size_t permittedRegCount, size_t* outLocationCount);
 		static void FreeParameterLocationsCallback(void* ctxt, BNValueLocation* locations, size_t count);
+		static BNVariable* GetParameterOrderingForVariablesCallback(
+			void* ctxt, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount);
+		static void FreeVariableListCallback(void* ctxt, BNVariable* vars, size_t count);
 		static int64_t GetStackAdjustmentForLocationsCallback(
 			void* ctxt, BNValueLocation* returnValue, BNValueLocation* locations, BNType** types, size_t paramCount);
 		static size_t GetRegisterStackAdjustmentsCallback(void* ctxt, BNValueLocation* returnValue,
@@ -17928,8 +17932,9 @@ namespace BinaryNinja {
 
 		virtual bool IsArgumentTypeRegisterCompatible(Type* type);
 		bool DefaultIsArgumentTypeRegisterCompatible(Type* type);
-		virtual bool AreNonRegisterArgumentsIndirect();
+		virtual bool IsNonRegisterArgumentIndirect(Type* type);
 		virtual bool AreStackArgumentsNaturallyAligned();
+		virtual bool AreStackArgumentsPushedLeftToRight();
 
 		virtual CallLayout GetCallLayout(const ReturnValue& returnValue, const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
@@ -17937,6 +17942,7 @@ namespace BinaryNinja {
 		virtual std::vector<ValueLocation> GetParameterLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
+		virtual std::vector<Variable> GetParameterOrderingForVariables(const std::map<Variable, Ref<Type>>& params);
 		virtual int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types);
 		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(
@@ -17948,6 +17954,7 @@ namespace BinaryNinja {
 		std::vector<ValueLocation> GetDefaultParameterLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
+		std::vector<Variable> GetDefaultParameterOrderingForVariables(const std::map<Variable, Ref<Type>>& params);
 		int64_t GetDefaultStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types);
 		std::map<uint32_t, int32_t> GetDefaultRegisterStackAdjustments(
@@ -17992,8 +17999,9 @@ namespace BinaryNinja {
 		virtual std::optional<Variable> GetReturnedIndirectReturnValuePointer() override;
 
 		virtual bool IsArgumentTypeRegisterCompatible(Type* type) override;
-		virtual bool AreNonRegisterArgumentsIndirect() override;
+		virtual bool IsNonRegisterArgumentIndirect(Type* type) override;
 		virtual bool AreStackArgumentsNaturallyAligned() override;
+		virtual bool AreStackArgumentsPushedLeftToRight() override;
 
 		virtual CallLayout GetCallLayout(const ReturnValue& returnValue, const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt) override;
@@ -18001,6 +18009,8 @@ namespace BinaryNinja {
 		virtual std::vector<ValueLocation> GetParameterLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt) override;
+		virtual std::vector<Variable> GetParameterOrderingForVariables(
+			const std::map<Variable, Ref<Type>>& params) override;
 		virtual int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
 			const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types) override;
 		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(
