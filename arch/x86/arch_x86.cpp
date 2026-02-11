@@ -3843,6 +3843,43 @@ public:
 };
 
 
+class X86SystemVCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86SystemVCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "sysv")
+	{
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
+		const vector<ValueLocation>&, const vector<Ref<Type>>&) override
+	{
+		if (!returnValue.has_value())
+			return 0;
+		for (auto& component: returnValue->components)
+		{
+			// Indirect return values have the pointer popped off the stack by the called function
+			if (component.indirect)
+				return 4;
+		}
+		return 0;
+	}
+};
+
+
 class X86CdeclCallingConvention: public X86BaseCallingConvention
 {
 public:
@@ -3866,6 +3903,34 @@ public:
 };
 
 
+class X86SystemVStdcallCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86SystemVStdcallCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "sysv-stdcall")
+	{
+	}
+
+	bool IsStackAdjustedOnReturn() override
+	{
+		return true;
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+};
+
+
 class X86RegParmCallingConvention: public X86BaseCallingConvention
 {
 public:
@@ -3873,9 +3938,32 @@ public:
 	{
 	}
 
-	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
+	vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{ XED_REG_EAX, XED_REG_EDX, XED_REG_ECX };
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	bool IsArgumentTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		return type->GetWidth() <= 12;
 	}
 };
 
@@ -3895,6 +3983,82 @@ public:
 	virtual bool IsStackAdjustedOnReturn() override
 	{
 		return true;
+	}
+};
+
+
+class X86GCCFastcallCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86GCCFastcallCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "gcc-fastcall")
+	{
+	}
+
+	vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX, XED_REG_EDX };
+	}
+
+	bool IsStackAdjustedOnReturn() override
+	{
+		return true;
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	Variable GetIndirectReturnValueLocation() override
+	{
+		return Variable::Register(XED_REG_ECX);
+	}
+};
+
+
+class X86ClangFastcallCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86ClangFastcallCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "clang-fastcall")
+	{
+	}
+
+	vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX, XED_REG_EDX };
+	}
+
+	bool IsStackAdjustedOnReturn() override
+	{
+		return true;
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	Variable GetIndirectReturnValueLocation() override
+	{
+		return Variable::StackOffset(4);
 	}
 };
 
@@ -3919,6 +4083,92 @@ public:
 	virtual bool IsStackAdjustedOnReturn() override
 	{
 		return true;
+	}
+};
+
+
+class X86GCCThiscallCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86GCCThiscallCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "gcc-thiscall")
+	{
+	}
+
+	vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX };
+	}
+
+	vector<uint32_t> GetRequiredArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX };
+	}
+
+	bool IsStackAdjustedOnReturn() override
+	{
+		return true;
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	Variable GetIndirectReturnValueLocation() override
+	{
+		return Variable::Register(XED_REG_ECX);
+	}
+};
+
+
+class X86ClangThiscallCallingConvention: public X86BaseCallingConvention
+{
+public:
+	X86ClangThiscallCallingConvention(Architecture* arch): X86BaseCallingConvention(arch, "clang-thiscall")
+	{
+	}
+
+	vector<uint32_t> GetIntegerArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX };
+	}
+
+	vector<uint32_t> GetRequiredArgumentRegisters() override
+	{
+		return vector<uint32_t>{ XED_REG_ECX };
+	}
+
+	bool IsStackAdjustedOnReturn() override
+	{
+		return true;
+	}
+
+	bool IsReturnTypeRegisterCompatible(Type* type) override
+	{
+		if (!type)
+			return false;
+		if (type->IsFloat())
+			return true;
+		if (type->IsStructure() || type->IsArray())
+			return false;
+		if (type->GetWidth() == 0 || type->GetWidth() == 1 || type->GetWidth() == 2 || type->GetWidth() == 4
+			|| type->GetWidth() == 8)
+			return true;
+		return false;
+	}
+
+	Variable GetIndirectReturnValueLocation() override
+	{
+		return Variable::StackOffset(4);
 	}
 };
 
@@ -5284,14 +5534,26 @@ extern "C"
 		x86->RegisterCallingConvention(conv);
 		x86->SetDefaultCallingConvention(conv);
 		x86->SetCdeclCallingConvention(conv);
+		conv = new X86SystemVCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
 		conv = new X86StdcallCallingConvention(x86);
 		x86->RegisterCallingConvention(conv);
 		x86->SetStdcallCallingConvention(conv);
+		conv = new X86SystemVStdcallCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
 		conv = new X86RegParmCallingConvention(x86);
 		x86->RegisterCallingConvention(conv);
 		conv = new X86FastcallCallingConvention(x86);
 		x86->RegisterCallingConvention(conv);
+		conv = new X86GCCFastcallCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
+		conv = new X86ClangFastcallCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
 		conv = new X86ThiscallCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
+		conv = new X86GCCThiscallCallingConvention(x86);
+		x86->RegisterCallingConvention(conv);
+		conv = new X86ClangThiscallCallingConvention(x86);
 		x86->RegisterCallingConvention(conv);
 		conv = new X86LinuxSystemCallConvention(x86);
 		x86->RegisterCallingConvention(conv);
