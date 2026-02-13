@@ -3824,7 +3824,7 @@ public:
 		return result;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -3850,7 +3850,7 @@ public:
 	{
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -3864,7 +3864,7 @@ public:
 		return false;
 	}
 
-	int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
+	int64_t GetStackAdjustmentForLocations(BinaryView*, const std::optional<ValueLocation>& returnValue,
 		const vector<ValueLocation>&, const vector<Ref<Type>>&) override
 	{
 		if (!returnValue.has_value())
@@ -3915,7 +3915,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -3943,7 +3943,7 @@ public:
 		return vector<uint32_t>{ XED_REG_EAX, XED_REG_EDX, XED_REG_ECX };
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -3957,7 +3957,7 @@ public:
 		return false;
 	}
 
-	bool IsArgumentTypeRegisterCompatible(Type* type) override
+	bool IsArgumentTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4004,7 +4004,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4042,7 +4042,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4109,7 +4109,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4152,7 +4152,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4222,7 +4222,7 @@ class X86PascalCallingConvention : public X86BaseCallingConvention
 public:
 	X86PascalCallingConvention(Architecture* arch) : X86BaseCallingConvention(arch, "pascal") {}
 
-	bool IsNonRegisterArgumentIndirect(Type* type) override
+	bool IsNonRegisterArgumentIndirect(BinaryView*, Type* type) override
 	{
 		return type && !type->IsFloat() && type->GetWidth() > 4;
 	}
@@ -4261,7 +4261,7 @@ public:
 		return { XED_REG_EAX, XED_REG_EDX, XED_REG_ECX };
 	}
 
-	bool IsNonRegisterArgumentIndirect(Type* type) override
+	bool IsNonRegisterArgumentIndirect(BinaryView*, Type* type) override
 	{
 		return type && !type->IsFloat() && type->GetWidth() > 4;
 	}
@@ -4313,18 +4313,18 @@ public:
 		return result;
 	}
 
-	ValueLocation GetReturnValueLocation(const ReturnValue&) override
+	ValueLocation GetReturnValueLocation(BinaryView*, const ReturnValue&) override
 	{
 		// It is not possible for this API to determine the return value location on the stack at
 		// this point, return an invalid location and fall back to GetCallLayout.
 		return ValueLocation();
 	}
 
-	CallLayout GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	CallLayout GetCallLayout(BinaryView* view, const ReturnValue& returnValue, const vector<FunctionParameter>& params,
 		const std::optional<set<uint32_t>>& permittedRegs) override
 	{
 		CallLayout result;
-		result.parameters = GetParameterLocations(result.returnValue, params, permittedRegs);
+		result.parameters = GetParameterLocations(view, result.returnValue, params, permittedRegs);
 
 		if (returnValue.type.GetValue() && returnValue.type->GetClass() != VoidTypeClass)
 		{
@@ -4364,7 +4364,7 @@ public:
 			}
 		}
 
-		result.registerStackAdjustments = GetRegisterStackAdjustments(result.returnValue, result.parameters);
+		result.registerStackAdjustments = GetRegisterStackAdjustments(view, result.returnValue, result.parameters);
 		return result;
 	}
 };
@@ -4477,7 +4477,7 @@ public:
 		return true;
 	}
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4492,7 +4492,7 @@ public:
 		return Variable::Register(XED_REG_RAX);
 	}
 
-	bool IsArgumentTypeRegisterCompatible(Type* type) override
+	bool IsArgumentTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -4502,7 +4502,7 @@ public:
 			|| type->GetWidth() == 8;
 	}
 
-	bool IsNonRegisterArgumentIndirect(Type*) override
+	bool IsNonRegisterArgumentIndirect(BinaryView*, Type*) override
 	{
 		return true;
 	}
@@ -4581,18 +4581,18 @@ public:
 		return result;
 	}
 
-	ValueLocation GetReturnValueLocation(const ReturnValue&) override
+	ValueLocation GetReturnValueLocation(BinaryView*, const ReturnValue&) override
 	{
 		// It is not possible for this API to determine the return value location on the stack at
 		// this point, return an invalid location and fall back to GetCallLayout.
 		return ValueLocation();
 	}
 
-	CallLayout GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	CallLayout GetCallLayout(BinaryView* view, const ReturnValue& returnValue, const vector<FunctionParameter>& params,
 		const std::optional<set<uint32_t>>& permittedRegs) override
 	{
 		CallLayout result;
-		result.parameters = GetParameterLocations(result.returnValue, params, permittedRegs);
+		result.parameters = GetParameterLocations(view, result.returnValue, params, permittedRegs);
 
 		if (returnValue.type.GetValue() && returnValue.type->GetClass() != VoidTypeClass)
 		{
@@ -4632,7 +4632,7 @@ public:
 			}
 		}
 
-		result.registerStackAdjustments = GetRegisterStackAdjustments(result.returnValue, result.parameters);
+		result.registerStackAdjustments = GetRegisterStackAdjustments(view, result.returnValue, result.parameters);
 		return result;
 	}
 };

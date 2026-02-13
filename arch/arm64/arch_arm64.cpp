@@ -2652,7 +2652,7 @@ class Arm64CallingConvention : public CallingConvention
 	virtual uint32_t GetFloatReturnValueRegister() override { return REG_V0; }
 
 
-	bool IsReturnTypeRegisterCompatible(Type* type) override
+	bool IsReturnTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -2668,7 +2668,7 @@ class Arm64CallingConvention : public CallingConvention
 	}
 
 
-	bool IsArgumentTypeRegisterCompatible(Type* type) override
+	bool IsArgumentTypeRegisterCompatible(BinaryView*, Type* type) override
 	{
 		if (!type)
 			return false;
@@ -2678,7 +2678,7 @@ class Arm64CallingConvention : public CallingConvention
 	}
 
 
-	bool IsNonRegisterArgumentIndirect(Type*) override
+	bool IsNonRegisterArgumentIndirect(BinaryView*, Type*) override
 	{
 		return true;
 	}

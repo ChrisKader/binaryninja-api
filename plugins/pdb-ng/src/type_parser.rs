@@ -2422,7 +2422,7 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
         // that the calling convention can determine this by default
         let default_return_location = convention
             .contents
-            .return_value_location(return_value.clone());
+            .return_value_location(self.bv, return_value.clone());
         let default_return_indrect = default_return_location
             .components
             .iter()

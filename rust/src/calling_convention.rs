@@ -26,6 +26,7 @@ use binaryninjacore_sys::*;
 use crate::architecture::{
     Architecture, ArchitectureExt, CoreArchitecture, CoreRegister, Register, RegisterId,
 };
+use crate::binary_view::BinaryView;
 use crate::ffi::slice_from_raw_parts;
 use crate::rc::{CoreArrayProvider, CoreArrayProviderInner, Guard, Ref, RefCountable};
 use crate::string::*;
@@ -537,6 +538,7 @@ impl CoreCallingConvention {
 
     pub fn call_layout(
         &self,
+        view: &BinaryView,
         return_value: impl Into<ReturnValue>,
         params: &[FunctionParameter],
         permitted_registers: Option<&[CoreRegister]>,
@@ -553,6 +555,7 @@ impl CoreCallingConvention {
             unsafe {
                 BNGetCallLayout(
                     self.handle,
+                    view.handle,
                     &raw_return_value,
                     raw_params.as_ptr(),
                     raw_params.len(),
@@ -564,6 +567,7 @@ impl CoreCallingConvention {
             unsafe {
                 BNGetCallLayoutDefaultPermittedArgs(
                     self.handle,
+                    view.handle,
                     &raw_return_value,
                     raw_params.as_ptr(),
                     raw_params.len(),
@@ -575,14 +579,14 @@ impl CoreCallingConvention {
         CallLayout::from_owned_core_raw(raw_layout)
     }
 
-    pub fn return_value_location(&self, return_value: impl Into<ReturnValue>) -> ValueLocation {
+    pub fn return_value_location(
+        &self,
+        view: &BinaryView,
+        return_value: impl Into<ReturnValue>,
+    ) -> ValueLocation {
         let mut raw_return_value = ReturnValue::into_rust_raw(return_value.into());
-        let mut raw_location = unsafe {
-            BNGetReturnValueLocation(
-                self.handle,
-                &mut raw_return_value,
-            )
-        };
+        let mut raw_location =
+            unsafe { BNGetReturnValueLocation(self.handle, view.handle, &mut raw_return_value) };
         ReturnValue::free_rust_raw(raw_return_value);
         let result = ValueLocation::from_raw(&raw_location);
         unsafe {

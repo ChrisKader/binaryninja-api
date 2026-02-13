@@ -2918,12 +2918,12 @@ extern "C"
 		void (*getIncomingRegisterValue)(void* ctxt, uint32_t reg, BNFunction* func, BNRegisterValue* result);
 		void (*getIncomingFlagValue)(void* ctxt, uint32_t flag, BNFunction* func, BNRegisterValue* result);
 
-		bool (*isReturnTypeRegisterCompatible)(void* ctxt, BNType* type);
+		bool (*isReturnTypeRegisterCompatible)(void* ctxt, BNBinaryView* view, BNType* type);
 		void (*getIndirectReturnValueLocation)(void* ctxt, BNVariable* outVar);
 		bool (*getReturnedIndirectReturnValuePointer)(void* ctxt, BNVariable* outVar);
 
-		bool (*isArgumentTypeRegisterCompatible)(void* ctxt, BNType* type);
-		bool (*isNonRegisterArgumentIndirect)(void* ctxt, BNType* type);
+		bool (*isArgumentTypeRegisterCompatible)(void* ctxt, BNBinaryView* view, BNType* type);
+		bool (*isNonRegisterArgumentIndirect)(void* ctxt, BNBinaryView* view, BNType* type);
 		bool (*areStackArgumentsNaturallyAligned)(void* ctxt);
 		bool (*areStackArgumentsPushedLeftToRight)(void* ctxt);
 
@@ -2934,23 +2934,24 @@ extern "C"
 
 		bool (*areArgumentRegistersUsedForVarArgs)(void* ctxt);
 
-		void (*getCallLayout)(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
+		void (*getCallLayout)(void* ctxt, BNBinaryView* view, BNReturnValue* returnValue, BNFunctionParameter* params,
 			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
 			BNCallLayout* result);
 		void (*freeCallLayout)(void* ctxt, BNCallLayout* layout);
-		void (*getReturnValueLocation)(void* ctxt, BNReturnValue* returnValue, BNValueLocation* outLocation);
+		void (*getReturnValueLocation)(
+			void* ctxt, BNBinaryView* view, BNReturnValue* returnValue, BNValueLocation* outLocation);
 		void (*freeValueLocation)(void* ctxt, BNValueLocation* location);
-		BNValueLocation* (*getParameterLocations)(void* ctxt, BNValueLocation* returnValue, BNFunctionParameter* params,
-			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
-			size_t* outLocationCount);
+		BNValueLocation* (*getParameterLocations)(void* ctxt, BNBinaryView* view, BNValueLocation* returnValue,
+			BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+			size_t permittedRegCount, size_t* outLocationCount);
 		void (*freeParameterLocations)(void* ctxt, BNValueLocation* locations, size_t count);
 		BNVariable* (*getParameterOrderingForVariables)(
-			void* ctxt, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount);
+			void* ctxt, BNBinaryView* view, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount);
 		void (*freeVariableList)(void* ctxt, BNVariable* vars, size_t count);
-		int64_t (*getStackAdjustmentForLocations)(
-			void* ctxt, BNValueLocation* returnValue, BNValueLocation* locations, BNType** types, size_t paramCount);
-		size_t (*getRegisterStackAdjustments)(void* ctxt, BNValueLocation* returnValue, BNValueLocation* params,
-			size_t paramCount, uint32_t** outRegs, int32_t** outAdjust);
+		int64_t (*getStackAdjustmentForLocations)(void* ctxt, BNBinaryView* view, BNValueLocation* returnValue,
+			BNValueLocation* locations, BNType** types, size_t paramCount);
+		size_t (*getRegisterStackAdjustments)(void* ctxt, BNBinaryView* view, BNValueLocation* returnValue,
+			BNValueLocation* params, size_t paramCount, uint32_t** outRegs, int32_t** outAdjust);
 		void (*freeRegisterStackAdjustments)(void* ctxt, uint32_t* regs, int32_t* adjust, size_t count);
 	} BNCustomCallingConvention;
 
@@ -7685,43 +7686,48 @@ extern "C"
 	    BNCallingConvention* cc, uint32_t reg, BNFunction* func);
 	BINARYNINJACOREAPI BNRegisterValue BNGetIncomingFlagValue(BNCallingConvention* cc, uint32_t reg, BNFunction* func);
 
-	BINARYNINJACOREAPI BNCallLayout BNGetCallLayout(BNCallingConvention* cc, const BNReturnValue* returnValue,
-		const BNFunctionParameter* params, size_t paramCount, const uint32_t* permittedRegs, size_t permittedRegCount);
-	BINARYNINJACOREAPI BNCallLayout BNGetCallLayoutDefaultPermittedArgs(BNCallingConvention* cc,
+	BINARYNINJACOREAPI BNCallLayout BNGetCallLayout(BNCallingConvention* cc, BNBinaryView* view,
+		const BNReturnValue* returnValue, const BNFunctionParameter* params, size_t paramCount,
+		const uint32_t* permittedRegs, size_t permittedRegCount);
+	BINARYNINJACOREAPI BNCallLayout BNGetCallLayoutDefaultPermittedArgs(BNCallingConvention* cc, BNBinaryView* view,
 		const BNReturnValue* returnValue, const BNFunctionParameter* params, size_t paramCount);
-	BINARYNINJACOREAPI BNCallLayout BNGetDefaultCallLayout(BNCallingConvention* cc, const BNReturnValue* returnValue,
-		const BNFunctionParameter* params, size_t paramCount, const uint32_t* permittedRegs, size_t permittedRegCount);
+	BINARYNINJACOREAPI BNCallLayout BNGetDefaultCallLayout(BNCallingConvention* cc, BNBinaryView* view,
+		const BNReturnValue* returnValue, const BNFunctionParameter* params, size_t paramCount,
+		const uint32_t* permittedRegs, size_t permittedRegCount);
 	BINARYNINJACOREAPI BNCallLayout BNGetDefaultCallLayoutDefaultPermittedArgs(BNCallingConvention* cc,
-		const BNReturnValue* returnValue, const BNFunctionParameter* params, size_t paramCount);
+		BNBinaryView* view, const BNReturnValue* returnValue, const BNFunctionParameter* params, size_t paramCount);
 	BINARYNINJACOREAPI void BNFreeCallLayout(BNCallLayout* layout);
-	BINARYNINJACOREAPI BNValueLocation BNGetReturnValueLocation(BNCallingConvention* cc, BNReturnValue* returnValue);
+	BINARYNINJACOREAPI BNValueLocation BNGetReturnValueLocation(
+		BNCallingConvention* cc, BNBinaryView* view, BNReturnValue* returnValue);
 	BINARYNINJACOREAPI BNValueLocation BNGetDefaultReturnValueLocation(
-		BNCallingConvention* cc, BNReturnValue* returnValue);
-	BINARYNINJACOREAPI BNValueLocation* BNGetParameterLocations(BNCallingConvention* cc, BNValueLocation* returnValue,
-		BNFunctionParameter* params, size_t paramCount, const uint32_t* permittedRegs, size_t permittedRegCount,
-		size_t* outCount);
+		BNCallingConvention* cc, BNBinaryView* view, BNReturnValue* returnValue);
+	BINARYNINJACOREAPI BNValueLocation* BNGetParameterLocations(BNCallingConvention* cc, BNBinaryView* view,
+		BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount, const uint32_t* permittedRegs,
+		size_t permittedRegCount, size_t* outCount);
 	BINARYNINJACOREAPI BNValueLocation* BNGetParameterLocationsDefaultPermittedArgs(BNCallingConvention* cc,
-		BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount, size_t* outCount);
-	BINARYNINJACOREAPI BNValueLocation* BNGetDefaultParameterLocations(BNCallingConvention* cc,
+		BNBinaryView* view, BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount,
+		size_t* outCount);
+	BINARYNINJACOREAPI BNValueLocation* BNGetDefaultParameterLocations(BNCallingConvention* cc, BNBinaryView* view,
 		BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount, const uint32_t* permittedRegs,
 		size_t permittedRegCount, size_t* outCount);
 	BINARYNINJACOREAPI BNValueLocation* BNGetDefaultParameterLocationsDefaultPermittedArgs(BNCallingConvention* cc,
-		BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount, size_t* outCount);
+		BNBinaryView* view, BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount,
+		size_t* outCount);
 	BINARYNINJACOREAPI void BNFreeValueLocationList(BNValueLocation* locations, size_t count);
 
-	BINARYNINJACOREAPI BNVariable* BNGetParameterOrderingForVariables(
-	    BNCallingConvention* cc, const BNVariable* paramVars, const BNType** paramTypes,
-	    size_t paramCount, size_t* count);
+	BINARYNINJACOREAPI BNVariable* BNGetParameterOrderingForVariables(BNCallingConvention* cc, BNBinaryView* view,
+		const BNVariable* paramVars, const BNType** paramTypes, size_t paramCount, size_t* count);
 	BINARYNINJACOREAPI BNVariable* BNGetDefaultParameterOrderingForVariables(BNCallingConvention* cc,
 		const BNVariable* paramVars, const BNType** paramTypes, size_t paramCount, size_t* count);
-	BINARYNINJACOREAPI int64_t BNGetStackAdjustmentForLocations(BNCallingConvention* cc, BNValueLocation* returnValue,
-		const BNValueLocation* paramLocations, const BNType** paramTypes, size_t paramCount);
+	BINARYNINJACOREAPI int64_t BNGetStackAdjustmentForLocations(BNCallingConvention* cc, BNBinaryView* view,
+		BNValueLocation* returnValue, const BNValueLocation* paramLocations, const BNType** paramTypes,
+		size_t paramCount);
 	BINARYNINJACOREAPI int64_t BNGetDefaultStackAdjustmentForLocations(BNCallingConvention* cc,
 		BNValueLocation* returnValue, const BNValueLocation* paramLocations, const BNType** paramTypes,
 		size_t paramCount);
 	BINARYNINJACOREAPI size_t BNGetCallingConventionRegisterStackAdjustments(BNCallingConvention* cc,
-		BNValueLocation* returnValue, BNValueLocation* params, size_t paramCount, uint32_t** outRegs,
-		int32_t** outAdjust);
+		BNBinaryView* view, BNValueLocation* returnValue, BNValueLocation* params, size_t paramCount,
+		uint32_t** outRegs, int32_t** outAdjust);
 	BINARYNINJACOREAPI size_t BNGetCallingConventionDefaultRegisterStackAdjustments(BNCallingConvention* cc,
 		BNValueLocation* returnValue, BNValueLocation* params, size_t paramCount, uint32_t** outRegs,
 		int32_t** outAdjust);
@@ -7736,14 +7742,15 @@ extern "C"
 	BINARYNINJACOREAPI BNVariable BNGetDefaultParameterVariableForIncomingVariable(
 	    BNCallingConvention* cc, const BNVariable* var);
 
-	BINARYNINJACOREAPI bool BNIsReturnTypeRegisterCompatible(BNCallingConvention* cc, BNType* type);
+	BINARYNINJACOREAPI bool BNIsReturnTypeRegisterCompatible(BNCallingConvention* cc, BNBinaryView* view, BNType* type);
 	BINARYNINJACOREAPI bool BNDefaultIsReturnTypeRegisterCompatible(BNCallingConvention* cc, BNType* type);
 	BINARYNINJACOREAPI BNVariable BNGetIndirectReturnValueLocation(BNCallingConvention* cc);
 	BINARYNINJACOREAPI BNVariable BNGetDefaultIndirectReturnValueLocation(BNCallingConvention* cc);
 	BINARYNINJACOREAPI bool BNGetReturnedIndirectReturnValuePointer(BNCallingConvention* cc, BNVariable* outVar);
-	BINARYNINJACOREAPI bool BNIsArgumentTypeRegisterCompatible(BNCallingConvention* cc, BNType* type);
+	BINARYNINJACOREAPI bool BNIsArgumentTypeRegisterCompatible(
+		BNCallingConvention* cc, BNBinaryView* view, BNType* type);
 	BINARYNINJACOREAPI bool BNDefaultIsArgumentTypeRegisterCompatible(BNCallingConvention* cc, BNType* type);
-	BINARYNINJACOREAPI bool BNIsNonRegisterArgumentIndirect(BNCallingConvention* cc, BNType* type);
+	BINARYNINJACOREAPI bool BNIsNonRegisterArgumentIndirect(BNCallingConvention* cc, BNBinaryView* view, BNType* type);
 	BINARYNINJACOREAPI bool BNAreStackArgumentsNaturallyAligned(BNCallingConvention* cc);
 	BINARYNINJACOREAPI bool BNAreStackArgumentsPushedLeftToRight(BNCallingConvention* cc);
 

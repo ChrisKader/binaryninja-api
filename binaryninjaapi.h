@@ -17853,32 +17853,32 @@ namespace BinaryNinja {
 		static void GetParameterVariableForIncomingVariableCallback(
 		    void* ctxt, const BNVariable* var, BNFunction* func, BNVariable* result);
 
-		static bool IsReturnTypeRegisterCompatibleCallback(void* ctxt, BNType* type);
+		static bool IsReturnTypeRegisterCompatibleCallback(void* ctxt, BNBinaryView* view, BNType* type);
 		static void GetIndirectReturnValueLocationCallback(void* ctxt, BNVariable* outVar);
 		static bool GetReturnedIndirectReturnValuePointerCallback(void* ctxt, BNVariable* outVar);
 
-		static bool IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNType* type);
-		static bool IsNonRegisterArgumentIndirectCallback(void* ctxt, BNType* type);
+		static bool IsArgumentTypeRegisterCompatibleCallback(void* ctxt, BNBinaryView* view, BNType* type);
+		static bool IsNonRegisterArgumentIndirectCallback(void* ctxt, BNBinaryView* view, BNType* type);
 		static bool AreStackArgumentsNaturallyAlignedCallback(void* ctxt);
 		static bool AreStackArgumentsPushedLeftToRightCallback(void* ctxt);
 
-		static void GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue, BNFunctionParameter* params,
-			size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs, size_t permittedRegCount,
-			BNCallLayout* result);
+		static void GetCallLayoutCallback(void* ctxt, BNBinaryView* view, BNReturnValue* returnValue,
+			BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+			size_t permittedRegCount, BNCallLayout* result);
 		static void FreeCallLayoutCallback(void* ctxt, BNCallLayout* layout);
 		static void GetReturnValueLocationCallback(
-			void* ctxt, BNReturnValue* returnValue, BNValueLocation* outLocation);
+			void* ctxt, BNBinaryView* view, BNReturnValue* returnValue, BNValueLocation* outLocation);
 		static void FreeValueLocationCallback(void* ctxt, BNValueLocation* location);
-		static BNValueLocation* GetParameterLocationsCallback(void* ctxt, BNValueLocation* returnValue,
-			BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
-			size_t permittedRegCount, size_t* outLocationCount);
+		static BNValueLocation* GetParameterLocationsCallback(void* ctxt, BNBinaryView* view,
+			BNValueLocation* returnValue, BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs,
+			uint32_t* permittedRegs, size_t permittedRegCount, size_t* outLocationCount);
 		static void FreeParameterLocationsCallback(void* ctxt, BNValueLocation* locations, size_t count);
 		static BNVariable* GetParameterOrderingForVariablesCallback(
-			void* ctxt, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount);
+			void* ctxt, BNBinaryView* view, BNVariable* vars, BNType** types, size_t paramCount, size_t* outCount);
 		static void FreeVariableListCallback(void* ctxt, BNVariable* vars, size_t count);
-		static int64_t GetStackAdjustmentForLocationsCallback(
-			void* ctxt, BNValueLocation* returnValue, BNValueLocation* locations, BNType** types, size_t paramCount);
-		static size_t GetRegisterStackAdjustmentsCallback(void* ctxt, BNValueLocation* returnValue,
+		static int64_t GetStackAdjustmentForLocationsCallback(void* ctxt, BNBinaryView* view,
+			BNValueLocation* returnValue, BNValueLocation* locations, BNType** types, size_t paramCount);
+		static size_t GetRegisterStackAdjustmentsCallback(void* ctxt, BNBinaryView* view, BNValueLocation* returnValue,
 			BNValueLocation* params, size_t paramCount, uint32_t** outRegs, int32_t** outAdjust);
 		static void FreeRegisterStackAdjustmentsCallback(void* ctxt, uint32_t* regs, int32_t* adjust, size_t count);
 
@@ -17924,35 +17924,39 @@ namespace BinaryNinja {
 		virtual Variable GetIncomingVariableForParameterVariable(const Variable& var, Function* func);
 		virtual Variable GetParameterVariableForIncomingVariable(const Variable& var, Function* func);
 
-		virtual bool IsReturnTypeRegisterCompatible(Type* type);
+		virtual bool IsReturnTypeRegisterCompatible(BinaryView* view, Type* type);
 		bool DefaultIsReturnTypeRegisterCompatible(Type* type);
 		virtual Variable GetIndirectReturnValueLocation();
 		Variable GetDefaultIndirectReturnValueLocation();
 		virtual std::optional<Variable> GetReturnedIndirectReturnValuePointer();
 
-		virtual bool IsArgumentTypeRegisterCompatible(Type* type);
+		virtual bool IsArgumentTypeRegisterCompatible(BinaryView* view, Type* type);
 		bool DefaultIsArgumentTypeRegisterCompatible(Type* type);
-		virtual bool IsNonRegisterArgumentIndirect(Type* type);
+		virtual bool IsNonRegisterArgumentIndirect(BinaryView* view, Type* type);
 		virtual bool AreStackArgumentsNaturallyAligned();
 		virtual bool AreStackArgumentsPushedLeftToRight();
 
-		virtual CallLayout GetCallLayout(const ReturnValue& returnValue, const std::vector<FunctionParameter>& params,
-			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
-		virtual ValueLocation GetReturnValueLocation(const ReturnValue& returnValue);
-		virtual std::vector<ValueLocation> GetParameterLocations(const std::optional<ValueLocation>& returnValue,
+		virtual CallLayout GetCallLayout(BinaryView* view, const ReturnValue& returnValue,
 			const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
-		virtual std::vector<Variable> GetParameterOrderingForVariables(const std::map<Variable, Ref<Type>>& params);
-		virtual int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
-			const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types);
-		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(
+		virtual ValueLocation GetReturnValueLocation(BinaryView* view, const ReturnValue& returnValue);
+		virtual std::vector<ValueLocation> GetParameterLocations(BinaryView* view,
+			const std::optional<ValueLocation>& returnValue, const std::vector<FunctionParameter>& params,
+			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
+		virtual std::vector<Variable> GetParameterOrderingForVariables(
+			BinaryView* view, const std::map<Variable, Ref<Type>>& params);
+		virtual int64_t GetStackAdjustmentForLocations(BinaryView* view,
+			const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& locations,
+			const std::vector<Ref<Type>>& types);
+		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(BinaryView* view,
 			const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& params);
 
-		CallLayout GetDefaultCallLayout(const ReturnValue& returnValue, const std::vector<FunctionParameter>& params,
-			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
-		ValueLocation GetDefaultReturnValueLocation(const ReturnValue& returnValue);
-		std::vector<ValueLocation> GetDefaultParameterLocations(const std::optional<ValueLocation>& returnValue,
+		CallLayout GetDefaultCallLayout(BinaryView* view, const ReturnValue& returnValue,
 			const std::vector<FunctionParameter>& params,
+			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
+		ValueLocation GetDefaultReturnValueLocation(BinaryView* view, const ReturnValue& returnValue);
+		std::vector<ValueLocation> GetDefaultParameterLocations(BinaryView* view,
+			const std::optional<ValueLocation>& returnValue, const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt);
 		std::vector<Variable> GetDefaultParameterOrderingForVariables(const std::map<Variable, Ref<Type>>& params);
 		int64_t GetDefaultStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
@@ -17994,26 +17998,28 @@ namespace BinaryNinja {
 		virtual Variable GetIncomingVariableForParameterVariable(const Variable& var, Function* func) override;
 		virtual Variable GetParameterVariableForIncomingVariable(const Variable& var, Function* func) override;
 
-		virtual bool IsReturnTypeRegisterCompatible(Type* type) override;
+		virtual bool IsReturnTypeRegisterCompatible(BinaryView* view, Type* type) override;
 		virtual Variable GetIndirectReturnValueLocation() override;
 		virtual std::optional<Variable> GetReturnedIndirectReturnValuePointer() override;
 
-		virtual bool IsArgumentTypeRegisterCompatible(Type* type) override;
-		virtual bool IsNonRegisterArgumentIndirect(Type* type) override;
+		virtual bool IsArgumentTypeRegisterCompatible(BinaryView* view, Type* type) override;
+		virtual bool IsNonRegisterArgumentIndirect(BinaryView* view, Type* type) override;
 		virtual bool AreStackArgumentsNaturallyAligned() override;
 		virtual bool AreStackArgumentsPushedLeftToRight() override;
 
-		virtual CallLayout GetCallLayout(const ReturnValue& returnValue, const std::vector<FunctionParameter>& params,
-			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt) override;
-		virtual ValueLocation GetReturnValueLocation(const ReturnValue& returnValue) override;
-		virtual std::vector<ValueLocation> GetParameterLocations(const std::optional<ValueLocation>& returnValue,
+		virtual CallLayout GetCallLayout(BinaryView* view, const ReturnValue& returnValue,
 			const std::vector<FunctionParameter>& params,
 			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt) override;
+		virtual ValueLocation GetReturnValueLocation(BinaryView* view, const ReturnValue& returnValue) override;
+		virtual std::vector<ValueLocation> GetParameterLocations(BinaryView* view,
+			const std::optional<ValueLocation>& returnValue, const std::vector<FunctionParameter>& params,
+			const std::optional<std::set<uint32_t>>& permittedRegs = std::nullopt) override;
 		virtual std::vector<Variable> GetParameterOrderingForVariables(
-			const std::map<Variable, Ref<Type>>& params) override;
-		virtual int64_t GetStackAdjustmentForLocations(const std::optional<ValueLocation>& returnValue,
-			const std::vector<ValueLocation>& locations, const std::vector<Ref<Type>>& types) override;
-		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(
+			BinaryView* view, const std::map<Variable, Ref<Type>>& params) override;
+		virtual int64_t GetStackAdjustmentForLocations(BinaryView* view,
+			const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& locations,
+			const std::vector<Ref<Type>>& types) override;
+		virtual std::map<uint32_t, int32_t> GetRegisterStackAdjustments(BinaryView* view,
 			const std::optional<ValueLocation>& returnValue, const std::vector<ValueLocation>& params) override;
 	};
 

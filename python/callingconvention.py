@@ -30,6 +30,7 @@ from . import variable
 from . import function
 from . import architecture
 from . import types
+from . import binaryview
 
 FunctionOrILFunction = Union["binaryninja.function.Function", "binaryninja.lowlevelil.LowLevelILFunction",
                              "binaryninja.mediumlevelil.MediumLevelILFunction",
@@ -487,11 +488,15 @@ class CallingConvention:
 			result[0].index = in_var[0].index
 			result[0].storage = in_var[0].storage
 
-	def _is_return_type_reg_compatible(self, ctxt, type):
+	def _is_return_type_reg_compatible(self, ctxt, view, type):
 		try:
 			if type:
+				if view:
+					view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+				else:
+					view_obj = None
 				type_obj = types.Type.create(handle=core.BNNewTypeReference(type))
-				return self.is_return_type_reg_compatible(type_obj)
+				return self.is_return_type_reg_compatible(view_obj, type_obj)
 			else:
 				return False
 		except:
@@ -517,22 +522,30 @@ class CallingConvention:
 				"Unhandled Python exception in CallingConvention._get_returned_indirect_return_value_pointer")
 			return False
 
-	def _is_arg_type_reg_compatible(self, ctxt, type):
+	def _is_arg_type_reg_compatible(self, ctxt, view, type):
 		try:
 			if type:
+				if view:
+					view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+				else:
+					view_obj = None
 				type_obj = types.Type.create(handle=core.BNNewTypeReference(type))
-				return self.is_arg_type_reg_compatible(type_obj)
+				return self.is_arg_type_reg_compatible(view_obj, type_obj)
 			else:
 				return False
 		except:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._is_arg_type_reg_compatible")
 			return False
 
-	def _is_non_reg_arg_indirect(self, ctxt, type):
+	def _is_non_reg_arg_indirect(self, ctxt, view, type):
 		try:
 			if type:
+				if view:
+					view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+				else:
+					view_obj = None
 				type_obj = types.Type.create(handle=core.BNNewTypeReference(type))
-				return self.is_non_reg_arg_indirect(type_obj)
+				return self.is_non_reg_arg_indirect(view_obj, type_obj)
 			else:
 				return self.is_non_reg_arg_indirect(None)
 		except:
@@ -554,10 +567,14 @@ class CallingConvention:
 			return False
 
 	def _get_call_layout(
-		self, ctxt, ret_value, params, param_count, has_permitted_regs, permitted_regs,
+		self, ctxt, view, ret_value, params, param_count, has_permitted_regs, permitted_regs,
 		permitted_reg_count, out_layout
 	):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			if ret_value:
 				ret_value_obj = types.ReturnValue._from_core_struct(ret_value[0])
 			else:
@@ -571,7 +588,7 @@ class CallingConvention:
 					reg_objs.append(architecture.RegisterIndex(permitted_regs[i]))
 			else:
 				reg_objs = None
-			layout = self.get_call_layout(ret_value_obj, param_objs, permitted_regs = reg_objs)
+			layout = self.get_call_layout(view_obj, ret_value_obj, param_objs, permitted_regs = reg_objs)
 
 			result = layout._to_core_struct()
 
@@ -627,10 +644,14 @@ class CallingConvention:
 		except:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._free_call_layout")
 
-	def _get_return_value_location(self, ctxt, ret_value, out_location):
+	def _get_return_value_location(self, ctxt, view, ret_value, out_location):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			ret = types.ReturnValue._from_core_struct(ret_value[0])
-			location = self.get_return_value_location(ret)
+			location = self.get_return_value_location(view_obj, ret)
 			if location is None:
 				location = types.ValueLocation([])
 			result = location._to_core_struct()
@@ -656,10 +677,14 @@ class CallingConvention:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._free_value_location")
 
 	def _get_parameter_locations(
-		self, ctxt, ret_value, params, param_count, has_permitted_regs, permitted_regs, permitted_reg_count,
+		self, ctxt, view, ret_value, params, param_count, has_permitted_regs, permitted_regs, permitted_reg_count,
 		out_location_count
 	):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			if ret_value:
 				ret_value_obj = types.ValueLocation._from_core_struct(ret_value[0])
 			else:
@@ -673,7 +698,7 @@ class CallingConvention:
 					reg_objs.append(architecture.RegisterIndex(permitted_regs[i]))
 			else:
 				reg_objs = None
-			locations = self.get_parameter_locations(ret_value_obj, param_objs, permitted_regs = reg_objs)
+			locations = self.get_parameter_locations(view_obj, ret_value_obj, param_objs, permitted_regs = reg_objs)
 
 			out_location_count[0] = len(locations)
 			result = (core.BNValueLocation * len(locations))()
@@ -699,14 +724,18 @@ class CallingConvention:
 		except:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._free_parameter_locations")
 
-	def _get_parameter_ordering_for_variables(self, ctxt, vars, types, param_count, out_count):
+	def _get_parameter_ordering_for_variables(self, ctxt, view, vars, types, param_count, out_count):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			params = {}
 			for i in range(param_count):
 				var = variable.CoreVariable.from_BNVariable(vars[i])
 				ty = types.Type.from_core_struct(types[i])
 
-			var_list = self.get_parameter_ordering_for_variables(params)
+			var_list = self.get_parameter_ordering_for_variables(view_obj, params)
 
 			out_count[0] = len(var_list)
 			result = (core.BNVariable * len(var_list))()
@@ -733,8 +762,12 @@ class CallingConvention:
 		except:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._free_variable_list")
 
-	def _get_stack_adjustment_for_locations(self, ctxt, ret_value, locations, type_list, param_count):
+	def _get_stack_adjustment_for_locations(self, ctxt, view, ret_value, locations, type_list, param_count):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			if ret_value:
 				ret_value_obj = types.ValueLocation._from_core_struct(ret_value[0])
 			else:
@@ -744,13 +777,17 @@ class CallingConvention:
 				loc = types.ValueLocation._from_core_struct(locations[i])
 				ty = types.Type.from_core_struct(type_list[i])
 				params.append((loc, ty))
-			return self.get_stack_adjustment_for_locations(ret_value_obj, params)
+			return self.get_stack_adjustment_for_locations(view_obj, ret_value_obj, params)
 		except:
 			log_error_for_exception("Unhandled Python exception in CallingConvention._get_stack_adjustment_for_locations")
 			return 0
 
-	def _get_register_stack_adjustments(self, ctxt, ret_value, params, param_count, out_regs, out_adjust):
+	def _get_register_stack_adjustments(self, ctxt, view, ret_value, params, param_count, out_regs, out_adjust):
 		try:
+			if view:
+				view_obj = binaryview.BinaryView(handle=core.BNNewViewReference(view))
+			else:
+				view_obj = None
 			if ret_value:
 				ret_value_obj = types.ValueLocation._from_core_struct(ret_value[0])
 			else:
@@ -758,7 +795,7 @@ class CallingConvention:
 			param_objs = []
 			for i in range(param_count):
 				param_objs.append(types.ValueLocation._from_core_struct(params[i]))
-			adjustment = self.get_register_stack_adjustments(ret_value_obj, param_objs)
+			adjustment = self.get_register_stack_adjustments(view_obj, ret_value_obj, param_objs)
 
 			regs = (ctypes.c_uint * len(adjustment))()
 			adjust = (ctypes.c_int * len(adjustment))()
@@ -845,10 +882,10 @@ class CallingConvention:
 	) -> 'variable.CoreVariable':
 		return self.perform_get_incoming_var_for_parameter_var(in_var, func)
 
-	def is_return_type_reg_compatible(self, type: 'types.Type') -> bool:
+	def is_return_type_reg_compatible(self, view: Optional['binaryview.BinaryView'], type: 'types.Type') -> bool:
 		return self.default_is_return_type_reg_compatible(type)
 
-	def is_non_reg_arg_indirect(self, type: Optional['types.Type']) -> bool:
+	def is_non_reg_arg_indirect(self, view: Optional['binaryview.BinaryView'], type: Optional['types.Type']) -> bool:
 		return False
 
 	def default_is_return_type_reg_compatible(self, type: 'types.Type') -> bool:
@@ -864,24 +901,28 @@ class CallingConvention:
 	def get_returned_indirect_return_value_pointer(self) -> Optional['variable.CoreVariable']:
 		return None
 
-	def is_arg_type_reg_compatible(self, type: 'types.Type') -> bool:
+	def is_arg_type_reg_compatible(self, view: Optional['binaryview.BinaryView'], type: 'types.Type') -> bool:
 		return self.default_is_arg_type_reg_compatible(type)
 
 	def default_is_arg_type_reg_compatible(self, type: 'types.Type') -> bool:
 		return core.BNDefaultIsArgumentTypeRegisterCompatible(self.handle, type.handle)
 
 	def get_call_layout(
-		self, return_value: Optional['types.ReturnValueOrType'], params: 'types.ParamsType',
-		func: Optional['function.Function'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ReturnValueOrType'],
+		params: 'types.ParamsType', func: Optional['function.Function'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> 'CallLayout':
-		return self.get_default_call_layout(return_value, params, func, permitted_regs)
+		return self.get_default_call_layout(view, return_value, params, func, permitted_regs)
 
 	def get_default_call_layout(
-		self, return_value: Optional['types.ReturnValueOrType'], params: 'types.ParamsType',
-		func: Optional['function.Function'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ReturnValueOrType'],
+		params: 'types.ParamsType', func: Optional['function.Function'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> 'CallLayout':
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = types.ReturnValue(types.Type.void())._to_core_struct()
 		elif isinstance(return_value, types.ReturnValue):
@@ -890,28 +931,36 @@ class CallingConvention:
 			ret = types.ReturnValue(return_value)._to_core_struct()
 		param_structs, type_list = types.FunctionBuilder._to_core_struct(params)
 		if permitted_regs is None:
-			layout = core.BNGetDefaultCallLayoutDefaultPermittedArgs(self.handle, ret, param_structs, len(params))
+			layout = core.BNGetDefaultCallLayoutDefaultPermittedArgs(self.handle, view_obj, ret, param_structs, len(params))
 		else:
 			regs = (ctypes.c_uint * len(permitted_regs))()
 			for i in range(len(permitted_regs)):
 				regs[i] = int(permitted_regs[i])
-			layout = core.BNGetDefaultCallLayout(self.handle, ret, param_structs, len(params), regs,
+			layout = core.BNGetDefaultCallLayout(self.handle, view_obj, ret, param_structs, len(params), regs,
 				len(permitted_regs))
 		result = CallLayout._from_core_struct(layout, func)
 		core.BNFreeCallLayout(layout)
 		return result
 
-	def get_return_value_location(self, return_value: 'types.ReturnValueOrType') -> Optional['types.ValueLocation']:
-		return self.get_default_return_value_location(return_value)
+	def get_return_value_location(
+		self, view: Optional['binaryview.BinaryView'], return_value: 'types.ReturnValueOrType'
+	) -> Optional['types.ValueLocation']:
+		return self.get_default_return_value_location(view, return_value)
 
-	def get_default_return_value_location(self, return_value: 'types.ReturnValueOrType') -> Optional['types.ValueLocation']:
+	def get_default_return_value_location(
+		self, view: Optional['binaryview.BinaryView'], return_value: 'types.ReturnValueOrType'
+	) -> Optional['types.ValueLocation']:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = types.ReturnValue(types.Type.void())._to_core_struct()
 		elif isinstance(return_value, types.ReturnValue):
 			ret = return_value._to_core_struct()
 		else:
 			ret = types.ReturnValue(return_value)._to_core_struct()
-		location = core.BNGetDefaultReturnValueLocation(self.handle, ret)
+		location = core.BNGetDefaultReturnValueLocation(self.handle, view_obj, ret)
 		if location.count == 0:
 			result = None
 		else:
@@ -920,17 +969,21 @@ class CallingConvention:
 		return result
 
 	def get_parameter_locations(
-		self, return_value: Optional['types.ValueLocation'], params: 'types.ParamsType',
-		arch: Optional['architecture.Architecture'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
+		params: 'types.ParamsType', arch: Optional['architecture.Architecture'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> List['types.ValueLocation']:
-		return self.get_default_parameter_locations(return_value, params, arch, permitted_regs)
+		return self.get_default_parameter_locations(view, return_value, params, arch, permitted_regs)
 
 	def get_default_parameter_locations(
-		self, return_value: Optional['types.ValueLocation'], params: 'types.ParamsType',
-		arch: Optional['architecture.Architecture'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
+		params: 'types.ParamsType', arch: Optional['architecture.Architecture'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> List['types.ValueLocation']:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = None
 		else:
@@ -938,13 +991,13 @@ class CallingConvention:
 		param_structs, type_list = types.FunctionBuilder._to_core_struct(params)
 		count = ctypes.c_ulonglong()
 		if permitted_regs is None:
-			locations = core.BNGetDefaultParameterLocationsDefaultPermittedArgs(self.handle, ret, param_structs,
+			locations = core.BNGetDefaultParameterLocationsDefaultPermittedArgs(self.handle, view_obj, ret, param_structs,
 				len(params), count)
 		else:
 			regs = (ctypes.c_uint * len(permitted_regs))()
 			for i in range(len(permitted_regs)):
 				regs[i] = int(permitted_regs[i])
-			locations = core.BNGetDefaultParameterLocations(self.handle, ret, param_structs, len(params), regs,
+			locations = core.BNGetDefaultParameterLocations(self.handle, view_obj, ret, param_structs, len(params), regs,
 				len(permitted_regs), count)
 		result = []
 		for i in range(count.value):
@@ -952,7 +1005,9 @@ class CallingConvention:
 		core.BNFreeValueLocationList(locations, count.value)
 		return result
 
-	def get_parameter_ordering_for_variables(self, params: Dict['variable.CoreVariable', 'types.Type']) -> List['variable.CoreVariable']:
+	def get_parameter_ordering_for_variables(
+		self, view: Optional['binaryview.BinaryView'], params: Dict['variable.CoreVariable', 'types.Type']
+	) -> List['variable.CoreVariable']:
 		return self.get_default_parameter_ordering_for_variables(params)
 
 	def get_default_parameter_ordering_for_variables(self, params: Dict['variable.CoreVariable', 'types.Type']) -> List['variable.CoreVariable']:
@@ -973,7 +1028,7 @@ class CallingConvention:
 		return result
 
 	def get_stack_adjustment_for_locations(
-		self, return_value: Optional['types.ValueLocation'],
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
 		params: List[Tuple['types.ValueLocation', 'types.Type']]
 	):
 		return self.get_default_stack_adjustment_for_locations(return_value, params)
@@ -994,7 +1049,8 @@ class CallingConvention:
 		return core.BNGetDefaultStackAdjustmentForLocations(self.handle, ret, locations, type_list, len(params))
 
 	def get_register_stack_adjustments(
-		self, return_value: Optional['types.ValueLocation'], params: List['types.ValueLocation']
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
+		params: List['types.ValueLocation']
 	) -> Dict['architecture.RegisterIndex', int]:
 		return self.get_default_register_stack_adjustments(return_value, params)
 
@@ -1186,8 +1242,12 @@ class CoreCallingConvention(CallingConvention):
 		out_var = core.BNGetParameterVariableForIncomingVariable(self.handle, in_buf, func_obj)
 		return variable.Variable.from_BNVariable(func, out_var)
 
-	def is_return_type_reg_compatible(self, type: 'types.Type') -> bool:
-		return core.BNIsReturnTypeRegisterCompatible(self.handle, type.handle)
+	def is_return_type_reg_compatible(self, view: Optional['binaryview.BinaryView'], type: 'types.Type') -> bool:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
+		return core.BNIsReturnTypeRegisterCompatible(self.handle, view_obj, type.handle)
 
 	def get_indirect_return_value_location(self) -> 'variable.CoreVariable':
 		result = core.BNGetIndirectReturnValueLocation(self.handle)
@@ -1199,20 +1259,32 @@ class CoreCallingConvention(CallingConvention):
 			return variable.CoreVariable.from_BNVariable(var)
 		return None
 
-	def is_arg_type_reg_compatible(self, type: 'types.Type') -> bool:
-		return core.BNIsArgumentTypeRegisterCompatible(self.handle, type.handle)
-
-	def is_non_reg_arg_indirect(self, type: Optional['types.Type']) -> bool:
-		if type is None:
-			return core.BNIsNonRegisterArgumentIndirect(self.handle, None)
+	def is_arg_type_reg_compatible(self, view: Optional['binaryview.BinaryView'], type: 'types.Type') -> bool:
+		if view is None:
+			view_obj = None
 		else:
-			return core.BNIsNonRegisterArgumentIndirect(self.handle, type.handle)
+			view_obj = view.handle
+		return core.BNIsArgumentTypeRegisterCompatible(self.handle, view_obj, type.handle)
+
+	def is_non_reg_arg_indirect(self, view: Optional['binaryview.BinaryView'], type: Optional['types.Type']) -> bool:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
+		if type is None:
+			return core.BNIsNonRegisterArgumentIndirect(self.handle, view_obj, None)
+		else:
+			return core.BNIsNonRegisterArgumentIndirect(self.handle, view_obj, type.handle)
 
 	def get_call_layout(
-		self, return_value: Optional['types.ReturnValueOrType'], params: 'types.ParamsType',
-		func: Optional['function.Function'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ReturnValueOrType'],
+		params: 'types.ParamsType', func: Optional['function.Function'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> 'CallLayout':
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = types.ReturnValue(types.Type.void())._to_core_struct()
 		elif isinstance(return_value, types.ReturnValue):
@@ -1221,24 +1293,30 @@ class CoreCallingConvention(CallingConvention):
 			ret = types.ReturnValue(return_value)._to_core_struct()
 		param_structs, type_list = types.FunctionBuilder._to_core_struct(params)
 		if permitted_regs is None:
-			layout = core.BNGetCallLayoutDefaultPermittedArgs(self.handle, ret, param_structs, len(params))
+			layout = core.BNGetCallLayoutDefaultPermittedArgs(self.handle, view_obj, ret, param_structs, len(params))
 		else:
 			regs = (ctypes.c_uint * len(permitted_regs))()
 			for i in range(len(permitted_regs)):
 				regs[i] = int(permitted_regs[i])
-			layout = core.BNGetCallLayout(self.handle, ret, param_structs, len(params), regs, len(permitted_regs))
+			layout = core.BNGetCallLayout(self.handle, view_obj, ret, param_structs, len(params), regs, len(permitted_regs))
 		result = CallLayout._from_core_struct(layout, func)
 		core.BNFreeCallLayout(layout)
 		return result
 
-	def get_return_value_location(self, return_value: 'types.ReturnValueOrType') -> Optional['types.ValueLocation']:
+	def get_return_value_location(
+		self, view: Optional['binaryview.BinaryView'], return_value: 'types.ReturnValueOrType'
+	) -> Optional['types.ValueLocation']:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = types.ReturnValue(types.Type.void())._to_core_struct()
 		elif isinstance(return_value, types.ReturnValue):
 			ret = return_value._to_core_struct()
 		else:
 			ret = types.ReturnValue(return_value)._to_core_struct()
-		location = core.BNGetReturnValueLocation(self.handle, ret)
+		location = core.BNGetReturnValueLocation(self.handle, view_obj, ret)
 		if location.count == 0:
 			result = None
 		else:
@@ -1247,10 +1325,14 @@ class CoreCallingConvention(CallingConvention):
 		return result
 
 	def get_parameter_locations(
-		self, return_value: Optional['types.ValueLocation'], params: 'types.ParamsType',
-		arch: Optional['architecture.Architecture'] = None,
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
+		params: 'types.ParamsType', arch: Optional['architecture.Architecture'] = None,
 		permitted_regs: Optional[List['architecture.RegisterIndex']] = None
 	) -> List['types.ValueLocation']:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = None
 		else:
@@ -1258,13 +1340,13 @@ class CoreCallingConvention(CallingConvention):
 		param_structs, type_list = types.FunctionBuilder._to_core_struct(params)
 		count = ctypes.c_ulonglong()
 		if permitted_regs is None:
-			locations = core.BNGetParameterLocationsDefaultPermittedArgs(self.handle, ret, param_structs,
+			locations = core.BNGetParameterLocationsDefaultPermittedArgs(self.handle, view_obj, ret, param_structs,
 				len(params), count)
 		else:
 			regs = (ctypes.c_uint * len(permitted_regs))()
 			for i in range(len(permitted_regs)):
 				regs[i] = int(permitted_regs[i])
-			locations = core.BNGetParameterLocations(self.handle, ret, param_structs, len(params), regs,
+			locations = core.BNGetParameterLocations(self.handle, view_obj, ret, param_structs, len(params), regs,
 				len(permitted_regs), count)
 		result = []
 		for i in range(count.value):
@@ -1272,7 +1354,13 @@ class CoreCallingConvention(CallingConvention):
 		core.BNFreeValueLocationList(locations, count.value)
 		return result
 
-	def get_parameter_ordering_for_variables(self, params: Dict['variable.CoreVariable', 'types.Type']) -> List['variable.CoreVariable']:
+	def get_parameter_ordering_for_variables(
+		self, view: Optional['binaryview.BinaryView'], params: Dict['variable.CoreVariable', 'types.Type']
+	) -> List['variable.CoreVariable']:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		vars = (core.BNVariable * len(params))()
 		types = (ctypes.POINTER(core.BNType) * len(params))()
 		for (i, (var, ty)) in enumerate(params.items()):
@@ -1281,7 +1369,7 @@ class CoreCallingConvention(CallingConvention):
 			i += 1
 
 		count = ctypes.c_ulonglong()
-		var_list = core.BNGetParameterOrderingForVariables(self.handle, vars, types, len(params), count)
+		var_list = core.BNGetParameterOrderingForVariables(self.handle, view_obj, vars, types, len(params), count)
 
 		result = []
 		for i in range(count.value):
@@ -1290,9 +1378,13 @@ class CoreCallingConvention(CallingConvention):
 		return result
 
 	def get_stack_adjustment_for_locations(
-		self, return_value: Optional['types.ValueLocation'],
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
 		params: List[Tuple['types.ValueLocation', 'types.Type']]
 	):
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = None
 		else:
@@ -1302,11 +1394,16 @@ class CoreCallingConvention(CallingConvention):
 		for i, (loc, ty) in enumerate(params):
 			locations[i] = loc._to_core_struct()
 			type_list[i] = ty.handle
-		return core.BNGetStackAdjustmentForLocations(self.handle, ret, locations, type_list, len(params))
+		return core.BNGetStackAdjustmentForLocations(self.handle, view_obj, ret, locations, type_list, len(params))
 
 	def get_register_stack_adjustments(
-		self, return_value: Optional['types.ValueLocation'], params: List['types.ValueLocation']
+		self, view: Optional['binaryview.BinaryView'], return_value: Optional['types.ValueLocation'],
+		params: List['types.ValueLocation']
 	) -> Dict['architecture.RegisterIndex', int]:
+		if view is None:
+			view_obj = None
+		else:
+			view_obj = view.handle
 		if return_value is None:
 			ret = None
 		else:
@@ -1316,7 +1413,7 @@ class CoreCallingConvention(CallingConvention):
 			locations[i] = loc._to_core_struct()
 		out_regs = ctypes.POINTER(ctypes.c_uint)()
 		out_adjust = ctypes.POINTER(ctypes.c_int)()
-		count = core.BNGetCallingConventionRegisterStackAdjustments(self.handle, ret, locations, len(params),
+		count = core.BNGetCallingConventionRegisterStackAdjustments(self.handle, view_obj, ret, locations, len(params),
 			out_regs, out_adjust)
 
 		result = {}
