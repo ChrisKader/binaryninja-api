@@ -227,7 +227,8 @@ void TriageView::startFullAnalysis()
 void TriageView::goToAddress()
 {
 	uint64_t addr;
-	if (!ViewFrame::getAddressFromInput(this, m_data, addr, getCurrentOffset()))
+	if (!ViewFrame::getAddressFromInput(this, m_data, addr, getCurrentOffset(),
+			"Go to Address", "Address:", false, true))
 		return;
 
 	ViewFrame* frame = ViewFrame::viewFrameForWidget(this);

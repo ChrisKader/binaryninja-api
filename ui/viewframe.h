@@ -489,7 +489,8 @@ class BINARYNINJAUIAPI ViewFrame : public QWidget
 	static bool getAddressFromString(QWidget* parent, BinaryViewRef data, uint64_t& offset, uint64_t currentAddress,
 	    const QString& addrStr, std::string& errorString);
 	static bool getAddressFromInput(QWidget* parent, BinaryViewRef data, uint64_t& offset, uint64_t currentAddress,
-	    const QString& title = "Go to Address", const QString& msg = "Address:", bool defaultToCurrent = false);
+	    const QString& title = "Go to Address", const QString& msg = "Address:", bool defaultToCurrent = false,
+	    bool showRelativeCheckbox = false);
 	static bool getFileOffsetFromInput(QWidget* parent, BinaryViewRef data, uint64_t& offset, uint64_t currentAddress,
 	    const QString& title = "Go to File Offset", const QString& msg = "File Offset:", bool defaultToCurrent = false);
 
