@@ -1173,8 +1173,6 @@ pub struct ValueLocationComponent {
     pub variable: Variable,
     pub offset: i64,
     pub size: Option<u64>,
-    pub indirect: bool,
-    pub returned_pointer: Option<Variable>,
 }
 
 impl ValueLocationComponent {
@@ -1189,12 +1187,6 @@ impl ValueLocationComponent {
             variable,
             offset: value.offset,
             size,
-            indirect: value.indirect,
-            returned_pointer: if value.returnedPointerValid {
-                Some(Variable::from(&value.returnedPointer))
-            } else {
-                None
-            },
         }
     }
 
@@ -1204,13 +1196,6 @@ impl ValueLocationComponent {
             offset: value.offset,
             sizeValid: value.size.is_some(),
             size: value.size.unwrap_or(0),
-            indirect: value.indirect,
-            returnedPointerValid: value.returned_pointer.is_some(),
-            returnedPointer: if let Some(ptr) = value.returned_pointer {
-                ptr.into()
-            } else {
-                Variable::new(VariableSourceType::RegisterVariableSourceType, 0, 0).into()
-            },
         }
     }
 }
@@ -1218,6 +1203,8 @@ impl ValueLocationComponent {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ValueLocation {
     pub components: Vec<ValueLocationComponent>,
+    pub indirect: bool,
+    pub returned_pointer: Option<Variable>,
 }
 
 impl ValueLocation {
@@ -1227,9 +1214,9 @@ impl ValueLocation {
                 variable: var,
                 offset: 0,
                 size: None,
-                indirect: false,
-                returned_pointer: None,
             }],
+            indirect: false,
+            returned_pointer: None,
         }
     }
 
@@ -1274,20 +1261,20 @@ impl ValueLocation {
         }
     }
 
-    pub(crate) fn from_raw(components: &BNValueLocation) -> Self {
-        if components.count == 0 {
-            return Self {
-                components: Vec::new(),
-            };
-        }
-
+    pub(crate) fn from_raw(loc: &BNValueLocation) -> Self {
         let components_raw: &[BNValueLocationComponent] =
-            unsafe { std::slice::from_raw_parts(components.components, components.count) };
+            unsafe { crate::ffi::slice_from_raw_parts(loc.components, loc.count) };
         Self {
             components: components_raw
                 .iter()
                 .map(|component| ValueLocationComponent::from_raw(component))
                 .collect(),
+            indirect: loc.indirect,
+            returned_pointer: if loc.returnedPointerValid {
+                Some(Variable::from(&loc.returnedPointer))
+            } else {
+                None
+            },
         }
     }
 
@@ -1300,6 +1287,13 @@ impl ValueLocation {
         BNValueLocation {
             count: components.len(),
             components: Box::leak(components).as_mut_ptr(),
+            indirect: value.indirect,
+            returnedPointerValid: value.returned_pointer.is_some(),
+            returnedPointer: if let Some(ptr) = value.returned_pointer {
+                ptr.into()
+            } else {
+                Variable::new(VariableSourceType::RegisterVariableSourceType, 0, 0).into()
+            },
         }
     }
 
@@ -1318,9 +1312,9 @@ impl Into<ValueLocation> for Variable {
                 variable: self,
                 offset: 0,
                 size: None,
-                indirect: false,
-                returned_pointer: None,
             }],
+            indirect: false,
+            returned_pointer: None,
         }
     }
 }
@@ -1367,6 +1361,8 @@ impl ReturnValue {
                     .map(|v| &v.contents)
                     .unwrap_or(&ValueLocation {
                         components: Vec::new(),
+                        indirect: false,
+                        returned_pointer: None,
                     }),
             ),
             locationConfidence: value.location.as_ref().map(|v| v.confidence).unwrap_or(0),
@@ -1476,6 +1472,8 @@ impl FunctionParameter {
             defaultLocation: value.location.is_none(),
             location: ValueLocation::into_rust_raw(&value.location.unwrap_or(ValueLocation {
                 components: Vec::new(),
+                indirect: false,
+                returned_pointer: None,
             })),
         }
     }

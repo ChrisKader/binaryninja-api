@@ -3869,12 +3869,9 @@ public:
 	{
 		if (!returnValue.has_value())
 			return 0;
-		for (auto& component: returnValue->components)
-		{
-			// Indirect return values have the pointer popped off the stack by the called function
-			if (component.indirect)
-				return 4;
-		}
+		// Indirect return values have the pointer popped off the stack by the called function
+		if (returnValue->indirect)
+			return 4;
 		return 0;
 	}
 };
@@ -4738,9 +4735,7 @@ public:
 		if (!components.has_value())
 		{
 			// Value doesn't work in a register, return through an indirect pointer
-			ValueLocationComponent indirect(
-				GetIndirectReturnValueLocation(), 0, type->GetWidth(), true, GetReturnedIndirectReturnValuePointer());
-			return ValueLocation({indirect});
+			return ValueLocation({GetIndirectReturnValueLocation()}, true, GetReturnedIndirectReturnValuePointer());
 		}
 
 		ValueLocation result;
@@ -4822,9 +4817,7 @@ public:
 			return result;
 
 		// Value doesn't work in a register, return through an indirect pointer
-		ValueLocationComponent indirect(
-			GetIndirectReturnValueLocation(), 0, type->GetWidth(), true, GetReturnedIndirectReturnValuePointer());
-		return ValueLocation({indirect});
+		return ValueLocation({GetIndirectReturnValueLocation()}, true, GetReturnedIndirectReturnValuePointer());
 	}
 
 	Variable GetIndirectReturnValueLocation() override { return Variable::Register(XED_REG_RDI); }
@@ -4845,15 +4838,12 @@ public:
 		size_t addrSize = GetArchitecture()->GetAddressSize();
 		int64_t stackOffset = addrSize;
 
-		if (returnValue.has_value())
+		if (returnValue.has_value() && returnValue->indirect)
 		{
 			// If the return value is stored as an indirect location parameter, ensure that the normal parameters
 			// don't overlap with it.
 			for (auto& component : returnValue->components)
 			{
-				if (!component.indirect)
-					continue;
-
 				if (component.variable.type == RegisterVariableSourceType)
 				{
 					if (intArgIter != intArgs.end() && *intArgIter == component.variable.storage)
@@ -4879,9 +4869,6 @@ public:
 				result.push_back(param.location);
 				for (auto& component : param.location.components)
 				{
-					if (component.indirect)
-						continue;
-
 					if (component.variable.type == RegisterVariableSourceType)
 					{
 						// If the non-default location matches the next register in the register parameter
@@ -4958,18 +4945,18 @@ public:
 						}
 					}
 
-					// Single component values shouldn't have the size set, otherwise heuristically determined locations
-					// will not match.
-					if (!indirect && location.components.size() == 1)
-						location.components[0].size.reset();
-
 					if (indirect)
 					{
+						location.indirect = true;
 						std::ranges::for_each(location.components, [&](auto& component) {
-							component.indirect = true;
 							component.size = param.type->GetWidth();
 						});
 					}
+
+					// Single component values shouldn't have the size set, otherwise heuristically determined locations
+					// will not match.
+					if (location.components.size() == 1)
+						location.components[0].size.reset();
 
 					if (valid)
 					{

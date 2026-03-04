@@ -443,8 +443,6 @@ class ValueLocationComponent:
 	var: 'variable.CoreVariable'
 	offset: int = 0
 	size: Optional[int] = None
-	indirect: bool = False
-	returned_pointer: Optional['variable.CoreVariable'] = None
 
 	@staticmethod
 	def _from_core_struct(struct: core.BNValueLocationComponent, arch: Optional['architecture.Architecture'] = None):
@@ -456,14 +454,7 @@ class ValueLocationComponent:
 		size = None
 		if struct.sizeValid:
 			size = struct.size
-		indirect = struct.indirect
-		returned_pointer = None
-		if struct.returnedPointerValid:
-			if arch is None:
-				returned_pointer = variable.CoreVariable.from_BNVariable(struct.returnedPointer)
-			else:
-				returned_pointer = variable.ArchitectureVariable.from_BNVariable(arch, struct.returnedPointer)
-		return ValueLocationComponent(var, offset, size, indirect, returned_pointer)
+		return ValueLocationComponent(var, offset, size)
 
 	def _to_core_struct(self) -> core.BNValueLocationComponent:
 		struct = core.BNValueLocationComponent()
@@ -472,10 +463,6 @@ class ValueLocationComponent:
 		struct.sizeValid = self.size is not None
 		if self.size is not None:
 			struct.size = self.size
-		struct.indirect = self.indirect
-		struct.returnedPointerValid = self.returned_pointer is not None
-		if self.returned_pointer is not None:
-			struct.returnedPointer = self.returned_pointer.to_BNVariable()
 		return struct
 
 	def to_string(self, arch: Optional['architecture.Architecture']):
@@ -507,13 +494,22 @@ class ValueLocationComponent:
 @dataclass
 class ValueLocation:
 	components: List['ValueLocationComponent']
+	indirect: bool = False
+	returned_pointer: Optional['variable.CoreVariable'] = None
 
 	@staticmethod
 	def _from_core_struct(struct: core.BNValueLocation, arch: Optional['architecture.Architecture'] = None):
 		components = []
 		for i in range(struct.count):
 			components.append(ValueLocationComponent._from_core_struct(struct.components[i], arch))
-		return ValueLocation(components)
+		indirect = struct.indirect
+		returned_pointer = None
+		if struct.returnedPointerValid:
+			if arch is None:
+				returned_pointer = variable.CoreVariable.from_BNVariable(struct.returnedPointer)
+			else:
+				returned_pointer = variable.ArchitectureVariable.from_BNVariable(arch, struct.returnedPointer)
+		return ValueLocation(components, indirect, returned_pointer)
 
 	def _to_core_struct(self) -> core.BNValueLocation:
 		struct = core.BNValueLocation()
@@ -522,6 +518,10 @@ class ValueLocation:
 		for i in range(len(self.components)):
 			components[i] = self.components[i]._to_core_struct()
 		struct.components = components
+		struct.indirect = self.indirect
+		struct.returnedPointerValid = self.returned_pointer is not None
+		if self.returned_pointer is not None:
+			struct.returnedPointer = self.returned_pointer.to_BNVariable()
 		return struct
 
 	def with_confidence(self, confidence: int) -> 'ValueLocationWithConfidence':

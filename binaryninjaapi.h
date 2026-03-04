@@ -10546,13 +10546,10 @@ namespace BinaryNinja {
 		Variable variable;
 		int64_t offset = 0;
 		std::optional<uint64_t> size;
-		bool indirect = false;
-		std::optional<Variable> returnedPointer;
 
 		ValueLocationComponent() = default;
-		ValueLocationComponent(Variable var, int64_t ofs = 0, std::optional<uint64_t> sz = std::nullopt,
-			bool indir = false, std::optional<Variable> retPtr = std::nullopt)
-			: variable(var), offset(ofs), size(sz), indirect(indir), returnedPointer(retPtr)
+		ValueLocationComponent(Variable var, int64_t ofs = 0, std::optional<uint64_t> sz = std::nullopt) :
+			variable(var), offset(ofs), size(sz)
 		{}
 
 		ValueLocationComponent RemapVariables(const std::function<Variable(Variable)>& remap) const;
@@ -10569,15 +10566,20 @@ namespace BinaryNinja {
 	struct ValueLocation
 	{
 		std::vector<ValueLocationComponent> components;
+		bool indirect = false;
+		std::optional<Variable> returnedPointer;
 
 		ValueLocation() {}
-		ValueLocation(Variable var) : components {var} {}
-		ValueLocation(const std::vector<ValueLocationComponent>& components) : components(components) {}
-		ValueLocation(std::vector<ValueLocationComponent>&& components) : components(std::move(components)) {}
-
-		ValueLocation(BNVariableSourceType type, uint64_t storage) : components {Variable(type, storage)} {}
-		ValueLocation(BNVariableSourceType type, uint32_t index, uint64_t storage) :
-			components {Variable(type, index, storage)}
+		ValueLocation(Variable var, bool indir = false, std::optional<Variable> retPtr = std::nullopt) :
+			components {var}, indirect(indir), returnedPointer(retPtr)
+		{}
+		ValueLocation(const std::vector<ValueLocationComponent>& components, bool indir = false,
+			std::optional<Variable> retPtr = std::nullopt) :
+			components(components), indirect(indir), returnedPointer(retPtr)
+		{}
+		ValueLocation(std::vector<ValueLocationComponent>&& components, bool indir = false,
+			std::optional<Variable> retPtr = std::nullopt) :
+			components(std::move(components)), indirect(indir), returnedPointer(retPtr)
 		{}
 
 		std::optional<Variable> GetVariableForReturnValue() const;

@@ -2611,15 +2611,15 @@ extern "C"
 		int64_t offset;
 		bool sizeValid;
 		uint64_t size;
-		bool indirect;
-		bool returnedPointerValid;
-		BNVariable returnedPointer;
 	} BNValueLocationComponent;
 
 	typedef struct BNValueLocation
 	{
 		size_t count;
 		BNValueLocationComponent* components;
+		bool indirect;
+		bool returnedPointerValid;
+		BNVariable returnedPointer;
 	} BNValueLocation;
 
 	typedef struct BNValueLocationWithConfidence

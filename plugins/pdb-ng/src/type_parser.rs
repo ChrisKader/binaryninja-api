@@ -2423,11 +2423,7 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
         let default_return_location = convention
             .contents
             .return_value_location(self.bv, return_value.clone());
-        let default_return_indrect = default_return_location
-            .components
-            .iter()
-            .any(|c| c.indirect);
-        if default_return_indrect {
+        if default_return_location.indirect {
             None
         } else {
             let variable = if let Some(reg) = convention.contents.int_arg_registers().get(0) {
@@ -2449,13 +2445,15 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
                         variable,
                         offset: 0,
                         size: Some(return_value.ty.contents.width()),
-                        indirect: true,
-                        returned_pointer: convention.contents.return_int_reg().map(|reg| Variable::new(
+                    }],
+                    indirect: true,
+                    returned_pointer: convention.contents.return_int_reg().map(|reg| {
+                        Variable::new(
                             VariableSourceType::RegisterVariableSourceType,
                             0,
                             reg.0 as i64,
-                        )),
-                    }],
+                        )
+                    }),
                 },
                 MAX_CONFIDENCE,
             ))

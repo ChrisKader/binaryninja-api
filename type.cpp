@@ -536,15 +536,13 @@ BaseStructure::BaseStructure(Type* _type, uint64_t _offset)
 
 ValueLocationComponent ValueLocationComponent::RemapVariables(const std::function<Variable(Variable)>& remap) const
 {
-	if (returnedPointer.has_value())
-		return {remap(variable), offset, size, indirect, remap(returnedPointer.value())};
-	return {remap(variable), offset, size, indirect, std::nullopt};
+	return {remap(variable), offset, size};
 }
+
 
 bool ValueLocationComponent::operator==(const ValueLocationComponent& component) const
 {
-	return variable == component.variable && offset == component.offset && size == component.size
-		&& indirect == component.indirect && (!indirect || returnedPointer == component.returnedPointer);
+	return variable == component.variable && offset == component.offset && size == component.size;
 }
 
 
@@ -557,10 +555,7 @@ bool ValueLocationComponent::operator!=(const ValueLocationComponent& component)
 ValueLocationComponent ValueLocationComponent::FromAPIObject(const BNValueLocationComponent* loc)
 {
 	return {Variable(loc->variable.type, loc->variable.index, loc->variable.storage), loc->offset,
-		loc->sizeValid ? std::optional<uint64_t>(loc->size) : std::nullopt, loc->indirect,
-		loc->returnedPointerValid ? std::optional<Variable>(
-			Variable(loc->returnedPointer.type, loc->returnedPointer.index, loc->returnedPointer.storage))
-			: std::nullopt};
+		loc->sizeValid ? std::optional<uint64_t>(loc->size) : std::nullopt};
 }
 
 
@@ -573,20 +568,6 @@ BNValueLocationComponent ValueLocationComponent::ToAPIObject() const
 	result.offset = offset;
 	result.sizeValid = size.has_value();
 	result.size = size.value_or(0);
-	result.indirect = indirect;
-	result.returnedPointerValid = returnedPointer.has_value();
-	if (returnedPointer.has_value())
-	{
-		result.returnedPointer.type = returnedPointer->type;
-		result.returnedPointer.index = returnedPointer->index;
-		result.returnedPointer.storage = returnedPointer->storage;
-	}
-	else
-	{
-		result.returnedPointer.type = RegisterVariableSourceType;
-		result.returnedPointer.index = 0;
-		result.returnedPointer.storage = 0;
-	}
 	return result;
 }
 
@@ -631,14 +612,16 @@ ValueLocation ValueLocation::RemapVariables(const std::function<Variable(Variabl
 	result.reserve(components.size());
 	for (auto& i : components)
 		result.push_back(i.RemapVariables(remap));
-	return {result};
+	if (returnedPointer.has_value())
+		return {result, indirect, remap(returnedPointer.value())};
+	return {result, indirect};
 }
 
 
 void ValueLocation::ForEachVariable(const std::function<void(Variable var, bool indirect)>& func) const
 {
 	for (auto& i : components)
-		func(i.variable, i.indirect);
+		func(i.variable, indirect);
 }
 
 
@@ -653,13 +636,14 @@ bool ValueLocation::ContainsVariable(Variable var) const
 
 bool ValueLocation::operator==(const ValueLocation& loc) const
 {
-	return components == loc.components;
+	return components == loc.components && indirect == loc.indirect
+		&& (!indirect || returnedPointer == loc.returnedPointer);
 }
 
 
 bool ValueLocation::operator!=(const ValueLocation& loc) const
 {
-	return components != loc.components;
+	return !(*this == loc);
 }
 
 
@@ -669,6 +653,12 @@ ValueLocation ValueLocation::FromAPIObject(const BNValueLocation* loc)
 	result.components.reserve(loc->count);
 	for (size_t i = 0; i < loc->count; i++)
 		result.components.push_back(ValueLocationComponent::FromAPIObject(&loc->components[i]));
+	result.indirect = loc->indirect;
+	if (loc->returnedPointerValid)
+	{
+		result.returnedPointer =
+			Variable(loc->returnedPointer.type, loc->returnedPointer.index, loc->returnedPointer.storage);
+	}
 	return result;
 }
 
@@ -680,6 +670,20 @@ BNValueLocation ValueLocation::ToAPIObject() const
 	result.components = new BNValueLocationComponent[components.size()];
 	for (size_t i = 0; i < components.size(); i++)
 		result.components[i] = components[i].ToAPIObject();
+	result.indirect = indirect;
+	result.returnedPointerValid = returnedPointer.has_value();
+	if (returnedPointer.has_value())
+	{
+		result.returnedPointer.type = returnedPointer->type;
+		result.returnedPointer.index = returnedPointer->index;
+		result.returnedPointer.storage = returnedPointer->storage;
+	}
+	else
+	{
+		result.returnedPointer.type = RegisterVariableSourceType;
+		result.returnedPointer.index = 0;
+		result.returnedPointer.storage = 0;
+	}
 	return result;
 }
 
