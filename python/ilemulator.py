@@ -171,11 +171,11 @@ class LLILEmulator:
 
     # ── Breakpoints ───────────────────────────────────────────────────────
 
-    def add_breakpoint(self, instr_index: int):
-        core.BNILEmulatorAddBreakpoint(self._get_base(), instr_index)
+    def add_breakpoint(self, addr: int):
+        core.BNILEmulatorAddBreakpoint(self._get_base(), addr)
 
-    def remove_breakpoint(self, instr_index: int):
-        core.BNILEmulatorRemoveBreakpoint(self._get_base(), instr_index)
+    def remove_breakpoint(self, addr: int):
+        core.BNILEmulatorRemoveBreakpoint(self._get_base(), addr)
 
     def clear_breakpoints(self):
         core.BNILEmulatorClearBreakpoints(self._get_base())

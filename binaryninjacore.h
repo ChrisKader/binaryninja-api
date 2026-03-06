@@ -9060,10 +9060,12 @@ extern "C"
 	// IL Emulator — memory (shared)
 	BINARYNINJACOREAPI size_t BNILEmulatorReadMemory(BNILEmulator* emu, void* dest, uint64_t addr, size_t len);
 	BINARYNINJACOREAPI size_t BNILEmulatorWriteMemory(BNILEmulator* emu, uint64_t addr, const void* src, size_t len);
+	BINARYNINJACOREAPI void BNILEmulatorMapMemory(BNILEmulator* emu, uint64_t addr, const void* data, size_t len);
+	BINARYNINJACOREAPI void BNILEmulatorMapMemoryZero(BNILEmulator* emu, uint64_t addr, size_t len);
 
-	// IL Emulator — breakpoints (shared)
-	BINARYNINJACOREAPI void BNILEmulatorAddBreakpoint(BNILEmulator* emu, size_t instrIndex);
-	BINARYNINJACOREAPI void BNILEmulatorRemoveBreakpoint(BNILEmulator* emu, size_t instrIndex);
+	// IL Emulator — breakpoints (shared, by address)
+	BINARYNINJACOREAPI void BNILEmulatorAddBreakpoint(BNILEmulator* emu, uint64_t addr);
+	BINARYNINJACOREAPI void BNILEmulatorRemoveBreakpoint(BNILEmulator* emu, uint64_t addr);
 	BINARYNINJACOREAPI void BNILEmulatorClearBreakpoints(BNILEmulator* emu);
 
 	// IL Emulator — limits (shared)

@@ -22232,10 +22232,12 @@ namespace BinaryNinja {
 		// Memory
 		size_t ReadMemory(void* dest, uint64_t addr, size_t len) const;
 		size_t WriteMemory(uint64_t addr, const void* src, size_t len);
+		void MapMemory(uint64_t addr, const void* data, size_t len);
+		void MapMemory(uint64_t addr, size_t len);
 
-		// Breakpoints
-		void AddBreakpoint(size_t instrIndex);
-		void RemoveBreakpoint(size_t instrIndex);
+		// Breakpoints (by address)
+		void AddBreakpoint(uint64_t addr);
+		void RemoveBreakpoint(uint64_t addr);
 		void ClearBreakpoints();
 
 		// Limits

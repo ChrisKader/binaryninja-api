@@ -122,17 +122,29 @@ size_t LLILEmulator::WriteMemory(uint64_t addr, const void* src, size_t len)
 }
 
 
-// ─── Breakpoints ─────────────────────────────────────────────────────────────
-
-void LLILEmulator::AddBreakpoint(size_t instrIndex)
+void LLILEmulator::MapMemory(uint64_t addr, const void* data, size_t len)
 {
-	BNILEmulatorAddBreakpoint(BNLLILEmulatorGetBase(m_object), instrIndex);
+	BNILEmulatorMapMemory(BNLLILEmulatorGetBase(m_object), addr, data, len);
 }
 
 
-void LLILEmulator::RemoveBreakpoint(size_t instrIndex)
+void LLILEmulator::MapMemory(uint64_t addr, size_t len)
 {
-	BNILEmulatorRemoveBreakpoint(BNLLILEmulatorGetBase(m_object), instrIndex);
+	BNILEmulatorMapMemoryZero(BNLLILEmulatorGetBase(m_object), addr, len);
+}
+
+
+// ─── Breakpoints ─────────────────────────────────────────────────────────────
+
+void LLILEmulator::AddBreakpoint(uint64_t addr)
+{
+	BNILEmulatorAddBreakpoint(BNLLILEmulatorGetBase(m_object), addr);
+}
+
+
+void LLILEmulator::RemoveBreakpoint(uint64_t addr)
+{
+	BNILEmulatorRemoveBreakpoint(BNLLILEmulatorGetBase(m_object), addr);
 }
 
 
