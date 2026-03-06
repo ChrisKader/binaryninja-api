@@ -353,6 +353,8 @@ extern "C"
 	typedef struct BNConstantRenderer BNConstantRenderer;
 	typedef struct BNStringRecognizer BNStringRecognizer;
 	typedef struct BNCustomStringType BNCustomStringType;
+	typedef struct BNILEmulator BNILEmulator;
+	typedef struct BNLLILEmulator BNLLILEmulator;
 
 	typedef struct BNRemoteFileSearchMatch
 	{
@@ -776,6 +778,19 @@ extern "C"
 		OrderedFlagRole = 9,
 		UnorderedFlagRole = 10,
 		CarryFlagWithInvertedSubtractRole = 11,
+	};
+
+	BN_ENUM(uint8_t, BNILEmulatorStopReason)
+	{
+		ILEmulatorRunning = 0,
+		ILEmulatorBreakpoint,
+		ILEmulatorInstructionLimit,
+		ILEmulatorHalt,
+		ILEmulatorError,
+		ILEmulatorCallHook,
+		ILEmulatorSyscallHook,
+		ILEmulatorUndefinedBehavior,
+		ILEmulatorUnimplemented
 	};
 
 	BN_ENUM(int8_t, BNFunctionGraphType)
@@ -9019,6 +9034,71 @@ extern "C"
 	BINARYNINJACOREAPI BNPossibleValueSet BNPossibleValueSetRotateRight(const BNPossibleValueSet* object, const BNPossibleValueSet* other, size_t size);
 	BINARYNINJACOREAPI BNPossibleValueSet BNPossibleValueSetNegate(const BNPossibleValueSet* object, size_t size);
 	BINARYNINJACOREAPI BNPossibleValueSet BNPossibleValueSetNot(const BNPossibleValueSet* object, size_t size);
+
+	// IL Emulator
+	BINARYNINJACOREAPI BNLLILEmulator* BNCreateLLILEmulatorForView(BNBinaryView* view);
+	BINARYNINJACOREAPI BNLLILEmulator* BNCreateLLILEmulator(BNLowLevelILFunction* il, BNBinaryView* view);
+	BINARYNINJACOREAPI BNLLILEmulator* BNNewLLILEmulatorReference(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI void BNFreeLLILEmulator(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI BNILEmulator* BNLLILEmulatorGetBase(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI bool BNLLILEmulatorSetEntryPoint(BNLLILEmulator* emu, uint64_t addr);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetEntryPointForIL(BNLLILEmulator* emu,
+		BNLowLevelILFunction* il, size_t instrIndex);
+
+	// IL Emulator — execution control (shared)
+	BINARYNINJACOREAPI BNILEmulatorStopReason BNILEmulatorRun(BNILEmulator* emu);
+	BINARYNINJACOREAPI BNILEmulatorStopReason BNILEmulatorStep(BNILEmulator* emu);
+	BINARYNINJACOREAPI BNILEmulatorStopReason BNILEmulatorStepN(BNILEmulator* emu, size_t n);
+
+	// IL Emulator — state (shared)
+	BINARYNINJACOREAPI size_t BNILEmulatorGetInstructionIndex(BNILEmulator* emu);
+	BINARYNINJACOREAPI void BNILEmulatorSetInstructionIndex(BNILEmulator* emu, size_t index);
+	BINARYNINJACOREAPI uint64_t BNILEmulatorGetCurrentAddress(BNILEmulator* emu);
+	BINARYNINJACOREAPI BNILEmulatorStopReason BNILEmulatorGetStopReason(BNILEmulator* emu);
+	BINARYNINJACOREAPI char* BNILEmulatorGetStopMessage(BNILEmulator* emu);
+
+	// IL Emulator — memory (shared)
+	BINARYNINJACOREAPI size_t BNILEmulatorReadMemory(BNILEmulator* emu, void* dest, uint64_t addr, size_t len);
+	BINARYNINJACOREAPI size_t BNILEmulatorWriteMemory(BNILEmulator* emu, uint64_t addr, const void* src, size_t len);
+
+	// IL Emulator — breakpoints (shared)
+	BINARYNINJACOREAPI void BNILEmulatorAddBreakpoint(BNILEmulator* emu, size_t instrIndex);
+	BINARYNINJACOREAPI void BNILEmulatorRemoveBreakpoint(BNILEmulator* emu, size_t instrIndex);
+	BINARYNINJACOREAPI void BNILEmulatorClearBreakpoints(BNILEmulator* emu);
+
+	// IL Emulator — limits (shared)
+	BINARYNINJACOREAPI void BNILEmulatorSetMaxInstructions(BNILEmulator* emu, size_t max);
+	BINARYNINJACOREAPI size_t BNILEmulatorGetInstructionsExecuted(BNILEmulator* emu);
+
+	// IL Emulator — hooks (shared)
+	BINARYNINJACOREAPI void BNILEmulatorSetCallHook(BNILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t target));
+	BINARYNINJACOREAPI void BNILEmulatorSetSyscallHook(BNILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNILEmulator* emu));
+	BINARYNINJACOREAPI void BNILEmulatorSetMemoryReadHook(BNILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint64_t* value));
+	BINARYNINJACOREAPI void BNILEmulatorSetMemoryWriteHook(BNILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint64_t value));
+	BINARYNINJACOREAPI void BNILEmulatorSetPreInstructionHook(BNILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNILEmulator* emu, size_t instrIndex));
+	BINARYNINJACOREAPI void BNILEmulatorReset(BNILEmulator* emu);
+
+	// LLIL Emulator — register/flag access
+	BINARYNINJACOREAPI uint64_t BNLLILEmulatorGetRegister(BNLLILEmulator* emu, uint32_t reg);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetRegister(BNLLILEmulator* emu, uint32_t reg, uint64_t value);
+	BINARYNINJACOREAPI uint64_t BNLLILEmulatorGetTempRegister(BNLLILEmulator* emu, uint32_t index);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetTempRegister(BNLLILEmulator* emu, uint32_t index, uint64_t value);
+	BINARYNINJACOREAPI uint8_t BNLLILEmulatorGetFlag(BNLLILEmulator* emu, uint32_t flag);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetFlag(BNLLILEmulator* emu, uint32_t flag, uint8_t value);
+
+	// LLIL Emulator — intrinsic hook
+	BINARYNINJACOREAPI void BNLLILEmulatorSetIntrinsicHook(BNLLILEmulator* emu, void* ctxt,
+		bool (*callback)(void* ctxt, BNLLILEmulator* emu, uint32_t intrinsic,
+			const uint64_t* params, size_t paramCount,
+			uint64_t* outValues, uint32_t* outRegs, size_t* outCount));
+
+	// LLIL Emulator — call stack
+	BINARYNINJACOREAPI size_t BNLLILEmulatorGetCallStackDepth(BNLLILEmulator* emu);
 
 #ifdef __cplusplus
 }

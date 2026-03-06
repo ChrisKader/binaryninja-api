@@ -22182,6 +22182,90 @@ namespace BinaryNinja {
 		std::optional<DerivedString> RecognizeImport(
 			const HighLevelILInstruction& instr, Type* type, int64_t val) override;
 	};
+	/*!
+		\ingroup emulator
+	*/
+	class LLILEmulator :
+	    public CoreRefCountObject<BNLLILEmulator, BNNewLLILEmulatorReference, BNFreeLLILEmulator>
+	{
+		// Stored hooks (prevent dangling captures)
+		std::function<bool(LLILEmulator*, uint64_t)> m_callHook;
+		std::function<bool(LLILEmulator*)> m_syscallHook;
+		std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t&)> m_memoryReadHook;
+		std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t)> m_memoryWriteHook;
+		std::function<bool(LLILEmulator*, size_t)> m_preInstructionHook;
+		std::function<bool(LLILEmulator*, uint32_t, const std::vector<uint64_t>&,
+			std::vector<std::pair<uint32_t, uint64_t>>&)> m_intrinsicHook;
+
+		// Static C bridge callbacks
+		static bool CallHookCallback(void* ctxt, BNILEmulator* emu, uint64_t target);
+		static bool SyscallHookCallback(void* ctxt, BNILEmulator* emu);
+		static bool MemoryReadHookCallback(void* ctxt, BNILEmulator* emu,
+			uint64_t addr, size_t size, uint64_t* value);
+		static bool MemoryWriteHookCallback(void* ctxt, BNILEmulator* emu,
+			uint64_t addr, size_t size, uint64_t value);
+		static bool PreInstructionHookCallback(void* ctxt, BNILEmulator* emu, size_t instrIndex);
+		static bool IntrinsicHookCallback(void* ctxt, BNLLILEmulator* emu,
+			uint32_t intrinsic, const uint64_t* params, size_t paramCount,
+			uint64_t* outValues, uint32_t* outRegs, size_t* outCount);
+
+	  public:
+		LLILEmulator(Ref<BinaryView> view);
+		LLILEmulator(Ref<LowLevelILFunction> il, Ref<BinaryView> view);
+		LLILEmulator(BNLLILEmulator* emu);
+
+		bool SetEntryPoint(uint64_t addr);
+		void SetEntryPoint(Ref<LowLevelILFunction> il, size_t instrIndex);
+
+		// Execution
+		BNILEmulatorStopReason Run();
+		BNILEmulatorStopReason Step();
+		BNILEmulatorStopReason StepN(size_t n);
+
+		// State
+		size_t GetInstructionIndex() const;
+		void SetInstructionIndex(size_t index);
+		uint64_t GetCurrentAddress() const;
+		BNILEmulatorStopReason GetStopReason() const;
+		std::string GetStopMessage() const;
+
+		// Memory
+		size_t ReadMemory(void* dest, uint64_t addr, size_t len) const;
+		size_t WriteMemory(uint64_t addr, const void* src, size_t len);
+
+		// Breakpoints
+		void AddBreakpoint(size_t instrIndex);
+		void RemoveBreakpoint(size_t instrIndex);
+		void ClearBreakpoints();
+
+		// Limits
+		void SetMaxInstructions(size_t max);
+		size_t GetInstructionsExecuted() const;
+
+		// Hooks
+		void SetCallHook(const std::function<bool(LLILEmulator*, uint64_t)>& hook);
+		void SetSyscallHook(const std::function<bool(LLILEmulator*)>& hook);
+		void SetMemoryReadHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t&)>& hook);
+		void SetMemoryWriteHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t)>& hook);
+		void SetPreInstructionHook(const std::function<bool(LLILEmulator*, size_t)>& hook);
+		void SetIntrinsicHook(const std::function<bool(LLILEmulator*, uint32_t,
+			const std::vector<uint64_t>&, std::vector<std::pair<uint32_t, uint64_t>>&)>& hook);
+
+		// Register / flag / temp access
+		uint64_t GetRegister(uint32_t reg) const;
+		void SetRegister(uint32_t reg, uint64_t value);
+		uint64_t GetTempRegister(uint32_t index) const;
+		void SetTempRegister(uint32_t index, uint64_t value);
+		uint8_t GetFlag(uint32_t flag) const;
+		void SetFlag(uint32_t flag, uint8_t value);
+
+		// Cross-function state
+		size_t GetCallStackDepth() const;
+
+		// Reset
+		void Reset();
+	};
+
 }  // namespace BinaryNinja
 
 
