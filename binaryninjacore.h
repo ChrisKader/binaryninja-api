@@ -9090,6 +9090,8 @@ extern "C"
 	BINARYNINJACOREAPI void BNLLILEmulatorSetRegister(BNLLILEmulator* emu, uint32_t reg, uint64_t value);
 	BINARYNINJACOREAPI uint64_t BNLLILEmulatorGetTempRegister(BNLLILEmulator* emu, uint32_t index);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetTempRegister(BNLLILEmulator* emu, uint32_t index, uint64_t value);
+	BINARYNINJACOREAPI size_t BNLLILEmulatorGetAllTempRegisters(
+		BNLLILEmulator* emu, uint32_t* outIndices, uint64_t* outValues, size_t maxCount);
 	BINARYNINJACOREAPI uint8_t BNLLILEmulatorGetFlag(BNLLILEmulator* emu, uint32_t flag);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetFlag(BNLLILEmulator* emu, uint32_t flag, uint8_t value);
 

@@ -22258,6 +22258,7 @@ namespace BinaryNinja {
 		void SetRegister(uint32_t reg, uint64_t value);
 		uint64_t GetTempRegister(uint32_t index) const;
 		void SetTempRegister(uint32_t index, uint64_t value);
+		std::unordered_map<uint32_t, uint64_t> GetAllTempRegisters() const;
 		uint8_t GetFlag(uint32_t flag) const;
 		void SetFlag(uint32_t flag, uint8_t value);
 

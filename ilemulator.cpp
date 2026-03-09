@@ -316,6 +316,22 @@ void LLILEmulator::SetTempRegister(uint32_t index, uint64_t value)
 }
 
 
+std::unordered_map<uint32_t, uint64_t> LLILEmulator::GetAllTempRegisters() const
+{
+	// Query count first, then fetch
+	size_t count = BNLLILEmulatorGetAllTempRegisters(m_object, nullptr, nullptr, 0);
+	std::unordered_map<uint32_t, uint64_t> result;
+	if (count == 0)
+		return result;
+	std::vector<uint32_t> indices(count);
+	std::vector<uint64_t> values(count);
+	count = BNLLILEmulatorGetAllTempRegisters(m_object, indices.data(), values.data(), count);
+	for (size_t i = 0; i < count; i++)
+		result[indices[i]] = values[i];
+	return result;
+}
+
+
 uint8_t LLILEmulator::GetFlag(uint32_t flag) const
 {
 	return BNLLILEmulatorGetFlag(m_object, flag);
