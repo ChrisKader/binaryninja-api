@@ -352,6 +352,32 @@ size_t LLILEmulator::GetCallStackDepth() const
 }
 
 
+// ─── Built-in libc stub settings ─────────────────────────────────────────────
+
+void LLILEmulator::SetBuiltinLibcStubsEnabled(bool enabled)
+{
+	BNLLILEmulatorSetBuiltinLibcStubsEnabled(m_object, enabled);
+}
+
+
+bool LLILEmulator::IsBuiltinLibcStubsEnabled() const
+{
+	return BNLLILEmulatorIsBuiltinLibcStubsEnabled(m_object);
+}
+
+
+void LLILEmulator::SetLogLibcCalls(bool enabled)
+{
+	BNLLILEmulatorSetLogLibcCalls(m_object, enabled);
+}
+
+
+bool LLILEmulator::IsLogLibcCalls() const
+{
+	return BNLLILEmulatorIsLogLibcCalls(m_object);
+}
+
+
 // ─── Reset ───────────────────────────────────────────────────────────────────
 
 void LLILEmulator::Reset()

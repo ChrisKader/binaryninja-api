@@ -402,6 +402,26 @@ class LLILEmulator:
         self._intrinsic_hook_cb = _cb
         core.BNLLILEmulatorSetIntrinsicHook(self.handle, None, _cb)
 
+    # ── Built-in libc stub settings ──────────────────────────────────────
+
+    @property
+    def builtin_libc_stubs(self) -> bool:
+        """Whether built-in libc stub emulation is enabled (default: True)."""
+        return core.BNLLILEmulatorIsBuiltinLibcStubsEnabled(self.handle)
+
+    @builtin_libc_stubs.setter
+    def builtin_libc_stubs(self, value: bool):
+        core.BNLLILEmulatorSetBuiltinLibcStubsEnabled(self.handle, value)
+
+    @property
+    def log_libc_calls(self) -> bool:
+        """Whether libc stub calls are logged to the console (default: True)."""
+        return core.BNLLILEmulatorIsLogLibcCalls(self.handle)
+
+    @log_libc_calls.setter
+    def log_libc_calls(self, value: bool):
+        core.BNLLILEmulatorSetLogLibcCalls(self.handle, value)
+
     # ── Reset ─────────────────────────────────────────────────────────────
 
     def reset(self):

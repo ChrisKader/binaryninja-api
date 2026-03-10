@@ -22265,6 +22265,12 @@ namespace BinaryNinja {
 		// Cross-function state
 		size_t GetCallStackDepth() const;
 
+		// Built-in libc stub settings
+		void SetBuiltinLibcStubsEnabled(bool enabled);
+		bool IsBuiltinLibcStubsEnabled() const;
+		void SetLogLibcCalls(bool enabled);
+		bool IsLogLibcCalls() const;
+
 		// Reset
 		void Reset();
 	};

@@ -9104,6 +9104,12 @@ extern "C"
 	// LLIL Emulator — call stack
 	BINARYNINJACOREAPI size_t BNLLILEmulatorGetCallStackDepth(BNLLILEmulator* emu);
 
+	// LLIL Emulator — built-in libc stubs
+	BINARYNINJACOREAPI void BNLLILEmulatorSetBuiltinLibcStubsEnabled(BNLLILEmulator* emu, bool enabled);
+	BINARYNINJACOREAPI bool BNLLILEmulatorIsBuiltinLibcStubsEnabled(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetLogLibcCalls(BNLLILEmulator* emu, bool enabled);
+	BINARYNINJACOREAPI bool BNLLILEmulatorIsLogLibcCalls(BNLLILEmulator* emu);
+
 #ifdef __cplusplus
 }
 #endif
