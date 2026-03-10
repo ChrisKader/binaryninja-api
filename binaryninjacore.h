@@ -793,6 +793,19 @@ extern "C"
 		ILEmulatorUnimplemented
 	};
 
+	struct BNEmulatorMemoryRegion
+	{
+		uint64_t start;
+		uint64_t size;
+		char* name;
+	};
+
+	struct BNEmulatorCallStackEntry
+	{
+		uint64_t functionAddress;
+		uint64_t returnAddress;
+	};
+
 	BN_ENUM(int8_t, BNFunctionGraphType)
 	{
 		InvalidILViewType = -1,
@@ -9062,6 +9075,8 @@ extern "C"
 	BINARYNINJACOREAPI size_t BNILEmulatorWriteMemory(BNILEmulator* emu, uint64_t addr, const void* src, size_t len);
 	BINARYNINJACOREAPI void BNILEmulatorMapMemory(BNILEmulator* emu, uint64_t addr, const void* data, size_t len);
 	BINARYNINJACOREAPI void BNILEmulatorMapMemoryZero(BNILEmulator* emu, uint64_t addr, size_t len);
+	BINARYNINJACOREAPI void BNILEmulatorMapMemoryNamed(BNILEmulator* emu, uint64_t addr, const void* data, size_t len, const char* name);
+	BINARYNINJACOREAPI void BNILEmulatorMapMemoryZeroNamed(BNILEmulator* emu, uint64_t addr, size_t len, const char* name);
 
 	// IL Emulator — breakpoints (shared, by address)
 	BINARYNINJACOREAPI void BNILEmulatorAddBreakpoint(BNILEmulator* emu, uint64_t addr);
@@ -9103,6 +9118,15 @@ extern "C"
 
 	// LLIL Emulator — call stack
 	BINARYNINJACOREAPI size_t BNLLILEmulatorGetCallStackDepth(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI BNEmulatorCallStackEntry* BNLLILEmulatorGetCallStack(BNLLILEmulator* emu, size_t* count);
+	BINARYNINJACOREAPI void BNLLILEmulatorFreeCallStack(BNEmulatorCallStackEntry* entries);
+
+	// LLIL Emulator — stepping
+	BINARYNINJACOREAPI BNILEmulatorStopReason BNLLILEmulatorStepOver(BNLLILEmulator* emu);
+
+	// IL Emulator — memory regions
+	BINARYNINJACOREAPI BNEmulatorMemoryRegion* BNILEmulatorGetMappedRegions(BNILEmulator* emu, size_t* count);
+	BINARYNINJACOREAPI void BNFreeEmulatorMemoryRegions(BNEmulatorMemoryRegion* regions, size_t count);
 
 	// LLIL Emulator — built-in libc stubs
 	BINARYNINJACOREAPI void BNLLILEmulatorSetBuiltinLibcStubsEnabled(BNLLILEmulator* emu, bool enabled);

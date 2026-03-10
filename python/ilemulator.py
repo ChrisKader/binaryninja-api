@@ -101,6 +101,10 @@ class LLILEmulator:
         """Execute up to *n* instructions."""
         return ILEmulatorStopReason(core.BNILEmulatorStepN(self._get_base(), n))
 
+    def step_over(self) -> ILEmulatorStopReason:
+        """Step over the current instruction (runs through called functions)."""
+        return ILEmulatorStopReason(core.BNLLILEmulatorStepOver(self.handle))
+
     # ── State ─────────────────────────────────────────────────────────────
 
     @property
@@ -130,6 +134,39 @@ class LLILEmulator:
     @property
     def call_stack_depth(self) -> int:
         return core.BNLLILEmulatorGetCallStackDepth(self.handle)
+
+    def get_call_stack(self) -> List[Dict[str, int]]:
+        """Return the call stack as a list of dicts with 'function_address' and 'return_address'.
+
+        Frame 0 is the current function; subsequent frames are callers.
+        For frame 0, 'return_address' is the current PC.
+        """
+        count = ctypes.c_ulonglong(0)
+        entries = core.BNLLILEmulatorGetCallStack(self.handle, count)
+        result = []
+        if entries:
+            for i in range(count.value):
+                result.append({
+                    'function_address': entries[i].functionAddress,
+                    'return_address': entries[i].returnAddress,
+                })
+            core.BNLLILEmulatorFreeCallStack(entries)
+        return result
+
+    def get_mapped_regions(self) -> List[Dict]:
+        """Return all mapped memory regions as a list of dicts with 'start', 'size', and 'name'."""
+        count = ctypes.c_ulonglong(0)
+        regions = core.BNILEmulatorGetMappedRegions(self._get_base(), count)
+        result = []
+        if regions:
+            for i in range(count.value):
+                result.append({
+                    'start': regions[i].start,
+                    'size': regions[i].size,
+                    'name': regions[i].name,
+                })
+            core.BNFreeEmulatorMemoryRegions(regions, count.value)
+        return result
 
     # ── Entry point ───────────────────────────────────────────────────────
 
@@ -168,6 +205,27 @@ class LLILEmulator:
         """Write *data* to emulator memory at *addr*.  Returns bytes written."""
         buf = (ctypes.c_ubyte * len(data))(*data)
         return core.BNILEmulatorWriteMemory(self._get_base(), addr, buf, len(data))
+
+    def map_memory(self, addr: int, data_or_size, name: str = ""):
+        """Map a memory region into the emulator.
+
+        - ``map_memory(0x1000, b'\\x00' * 0x1000)`` — map with data
+        - ``map_memory(0x1000, 0x1000)`` — map zero-filled
+        - ``map_memory(0x1000, 0x1000, "my_region")`` — map with a name
+        """
+        base = self._get_base()
+        if isinstance(data_or_size, (bytes, bytearray)):
+            buf = (ctypes.c_ubyte * len(data_or_size))(*data_or_size)
+            if name:
+                core.BNILEmulatorMapMemoryNamed(base, addr, buf, len(data_or_size), name.encode())
+            else:
+                core.BNILEmulatorMapMemory(base, addr, buf, len(data_or_size))
+        else:
+            size = data_or_size
+            if name:
+                core.BNILEmulatorMapMemoryZeroNamed(base, addr, size, name.encode())
+            else:
+                core.BNILEmulatorMapMemoryZero(base, addr, size)
 
     # ── Breakpoints ───────────────────────────────────────────────────────
 

@@ -73,6 +73,12 @@ BNILEmulatorStopReason LLILEmulator::StepN(size_t n)
 }
 
 
+BNILEmulatorStopReason LLILEmulator::StepOver()
+{
+	return BNLLILEmulatorStepOver(m_object);
+}
+
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 size_t LLILEmulator::GetInstructionIndex() const
@@ -122,15 +128,21 @@ size_t LLILEmulator::WriteMemory(uint64_t addr, const void* src, size_t len)
 }
 
 
-void LLILEmulator::MapMemory(uint64_t addr, const void* data, size_t len)
+void LLILEmulator::MapMemory(uint64_t addr, const void* data, size_t len, const std::string& name)
 {
-	BNILEmulatorMapMemory(BNLLILEmulatorGetBase(m_object), addr, data, len);
+	if (name.empty())
+		BNILEmulatorMapMemory(BNLLILEmulatorGetBase(m_object), addr, data, len);
+	else
+		BNILEmulatorMapMemoryNamed(BNLLILEmulatorGetBase(m_object), addr, data, len, name.c_str());
 }
 
 
-void LLILEmulator::MapMemory(uint64_t addr, size_t len)
+void LLILEmulator::MapMemory(uint64_t addr, size_t len, const std::string& name)
 {
-	BNILEmulatorMapMemoryZero(BNLLILEmulatorGetBase(m_object), addr, len);
+	if (name.empty())
+		BNILEmulatorMapMemoryZero(BNLLILEmulatorGetBase(m_object), addr, len);
+	else
+		BNILEmulatorMapMemoryZeroNamed(BNLLILEmulatorGetBase(m_object), addr, len, name.c_str());
 }
 
 
@@ -349,6 +361,38 @@ void LLILEmulator::SetFlag(uint32_t flag, uint8_t value)
 size_t LLILEmulator::GetCallStackDepth() const
 {
 	return BNLLILEmulatorGetCallStackDepth(m_object);
+}
+
+
+std::vector<LLILEmulator::CallStackEntry> LLILEmulator::GetCallStack() const
+{
+	size_t count = 0;
+	BNEmulatorCallStackEntry* entries = BNLLILEmulatorGetCallStack(m_object, &count);
+	std::vector<CallStackEntry> result;
+	if (entries)
+	{
+		result.reserve(count);
+		for (size_t i = 0; i < count; i++)
+			result.push_back({entries[i].functionAddress, entries[i].returnAddress});
+		BNLLILEmulatorFreeCallStack(entries);
+	}
+	return result;
+}
+
+
+std::vector<LLILEmulator::MappedRegion> LLILEmulator::GetMappedRegions() const
+{
+	size_t count = 0;
+	BNEmulatorMemoryRegion* regions = BNILEmulatorGetMappedRegions(BNLLILEmulatorGetBase(m_object), &count);
+	std::vector<MappedRegion> result;
+	if (regions)
+	{
+		result.reserve(count);
+		for (size_t i = 0; i < count; i++)
+			result.push_back({regions[i].start, regions[i].size, regions[i].name ? regions[i].name : ""});
+		BNFreeEmulatorMemoryRegions(regions, count);
+	}
+	return result;
 }
 
 

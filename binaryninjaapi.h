@@ -22221,6 +22221,7 @@ namespace BinaryNinja {
 		BNILEmulatorStopReason Run();
 		BNILEmulatorStopReason Step();
 		BNILEmulatorStopReason StepN(size_t n);
+		BNILEmulatorStopReason StepOver();
 
 		// State
 		size_t GetInstructionIndex() const;
@@ -22232,8 +22233,8 @@ namespace BinaryNinja {
 		// Memory
 		size_t ReadMemory(void* dest, uint64_t addr, size_t len) const;
 		size_t WriteMemory(uint64_t addr, const void* src, size_t len);
-		void MapMemory(uint64_t addr, const void* data, size_t len);
-		void MapMemory(uint64_t addr, size_t len);
+		void MapMemory(uint64_t addr, const void* data, size_t len, const std::string& name = "");
+		void MapMemory(uint64_t addr, size_t len, const std::string& name = "");
 
 		// Breakpoints (by address)
 		void AddBreakpoint(uint64_t addr);
@@ -22264,6 +22265,22 @@ namespace BinaryNinja {
 
 		// Cross-function state
 		size_t GetCallStackDepth() const;
+
+		struct CallStackEntry
+		{
+			uint64_t functionAddress;
+			uint64_t returnAddress;
+		};
+		std::vector<CallStackEntry> GetCallStack() const;
+
+		// Memory regions
+		struct MappedRegion
+		{
+			uint64_t start;
+			uint64_t size;
+			std::string name;
+		};
+		std::vector<MappedRegion> GetMappedRegions() const;
 
 		// Built-in libc stub settings
 		void SetBuiltinLibcStubsEnabled(bool enabled);
