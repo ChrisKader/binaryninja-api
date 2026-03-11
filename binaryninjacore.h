@@ -790,7 +790,8 @@ extern "C"
 		ILEmulatorCallHook,
 		ILEmulatorSyscallHook,
 		ILEmulatorUndefinedBehavior,
-		ILEmulatorUnimplemented
+		ILEmulatorUnimplemented,
+		ILEmulatorUserRequestedStop
 	};
 
 	struct BNEmulatorMemoryRegion
@@ -9101,6 +9102,11 @@ extern "C"
 		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint64_t value));
 	BINARYNINJACOREAPI void BNILEmulatorSetPreInstructionHook(BNILEmulator* emu, void* ctxt,
 		bool (*callback)(void* ctxt, BNILEmulator* emu, size_t instrIndex));
+	BINARYNINJACOREAPI void BNILEmulatorSetStdoutCallback(BNILEmulator* emu, void* ctxt,
+		void (*callback)(void* ctxt, BNILEmulator* emu, const char* data, size_t len));
+	BINARYNINJACOREAPI void BNILEmulatorSetStdinCallback(BNILEmulator* emu, void* ctxt,
+		size_t (*callback)(void* ctxt, BNILEmulator* emu, char* buf, size_t maxLen));
+	BINARYNINJACOREAPI void BNILEmulatorRequestStop(BNILEmulator* emu);
 	BINARYNINJACOREAPI void BNILEmulatorReset(BNILEmulator* emu);
 
 	// LLIL Emulator — register/flag access

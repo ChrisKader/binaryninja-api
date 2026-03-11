@@ -91,6 +91,12 @@ BNILEmulatorStopReason LLILEmulator::StepOver()
 }
 
 
+void LLILEmulator::RequestStop()
+{
+	BNILEmulatorRequestStop(BNLLILEmulatorGetBase(m_object));
+}
+
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 size_t LLILEmulator::GetInstructionIndex() const
@@ -255,6 +261,20 @@ bool LLILEmulator::IntrinsicHookCallback(void* ctxt, BNLLILEmulator*,
 }
 
 
+void LLILEmulator::StdoutCallbackBridge(void* ctxt, BNILEmulator*, const char* data, size_t len)
+{
+	LLILEmulator* self = (LLILEmulator*)ctxt;
+	self->m_stdoutCallback(self, std::string(data, len));
+}
+
+
+size_t LLILEmulator::StdinCallbackBridge(void* ctxt, BNILEmulator*, char* buf, size_t maxLen)
+{
+	LLILEmulator* self = (LLILEmulator*)ctxt;
+	return self->m_stdinCallback(self, buf, maxLen);
+}
+
+
 // ─── Hook setters ────────────────────────────────────────────────────────────
 
 void LLILEmulator::SetCallHook(const std::function<bool(LLILEmulator*, uint64_t)>& hook)
@@ -311,6 +331,24 @@ void LLILEmulator::SetIntrinsicHook(const std::function<bool(LLILEmulator*, uint
 	BNLLILEmulatorSetIntrinsicHook(m_object,
 		hook ? (void*)this : nullptr,
 		hook ? IntrinsicHookCallback : nullptr);
+}
+
+
+void LLILEmulator::SetStdoutCallback(const std::function<void(LLILEmulator*, const std::string&)>& cb)
+{
+	m_stdoutCallback = cb;
+	BNILEmulatorSetStdoutCallback(BNLLILEmulatorGetBase(m_object),
+		cb ? (void*)this : nullptr,
+		cb ? StdoutCallbackBridge : nullptr);
+}
+
+
+void LLILEmulator::SetStdinCallback(const std::function<size_t(LLILEmulator*, char*, size_t)>& cb)
+{
+	m_stdinCallback = cb;
+	BNILEmulatorSetStdinCallback(BNLLILEmulatorGetBase(m_object),
+		cb ? (void*)this : nullptr,
+		cb ? StdinCallbackBridge : nullptr);
 }
 
 

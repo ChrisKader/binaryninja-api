@@ -71,6 +71,8 @@ class LLILEmulator:
         self._memory_write_hook_cb = None
         self._pre_instruction_hook_cb = None
         self._intrinsic_hook_cb = None
+        self._stdout_cb = None
+        self._stdin_cb = None
 
         # Store user callbacks
         self._call_hook = None
@@ -79,6 +81,8 @@ class LLILEmulator:
         self._memory_write_hook = None
         self._pre_instruction_hook = None
         self._intrinsic_hook = None
+        self._stdout_callback = None
+        self._stdin_callback = None
 
     def __del__(self):
         if core is not None and hasattr(self, 'handle') and self.handle is not None:
@@ -104,6 +108,10 @@ class LLILEmulator:
     def step_over(self) -> ILEmulatorStopReason:
         """Step over the current instruction (runs through called functions)."""
         return ILEmulatorStopReason(core.BNLLILEmulatorStepOver(self.handle))
+
+    def request_stop(self):
+        """Request the emulator to stop at the next opportunity. Thread-safe."""
+        core.BNILEmulatorRequestStop(self._get_base())
 
     # ── State ─────────────────────────────────────────────────────────────
 
@@ -471,6 +479,66 @@ class LLILEmulator:
 
         self._intrinsic_hook_cb = _cb
         core.BNLLILEmulatorSetIntrinsicHook(self.handle, None, _cb)
+
+    def set_stdout_callback(
+        self,
+        callback: Optional[Callable[['LLILEmulator', bytes], None]],
+    ):
+        """Set a callback for stdout output from emulated printf/puts/putchar.
+
+        The callback receives ``(emulator, data)`` where *data* is a ``bytes``
+        object containing the raw output. Pass ``None`` to remove the callback.
+        """
+        self._stdout_callback = callback
+        if callback is None:
+            core.BNILEmulatorSetStdoutCallback(self._get_base(), None, None)
+            self._stdout_cb = None
+            return
+
+        @ctypes.CFUNCTYPE(None, ctypes.c_void_p,
+            ctypes.POINTER(core.BNILEmulator),
+            ctypes.c_char_p, ctypes.c_ulonglong)
+        def _cb(ctxt, emu, data, length):
+            try:
+                self._stdout_callback(self, data[:length])
+            except:
+                pass
+
+        self._stdout_cb = _cb
+        core.BNILEmulatorSetStdoutCallback(self._get_base(), None, _cb)
+
+    def set_stdin_callback(
+        self,
+        callback: Optional[Callable[['LLILEmulator', int], bytes]],
+    ):
+        """Set a callback for stdin reads from emulated getchar/fgets/fread.
+
+        The callback receives ``(emulator, max_len)`` and should return a
+        ``bytes`` object with the input data (up to *max_len* bytes).
+        Return ``b''`` for EOF. Pass ``None`` to remove the callback.
+        """
+        self._stdin_callback = callback
+        if callback is None:
+            core.BNILEmulatorSetStdinCallback(self._get_base(), None, None)
+            self._stdin_cb = None
+            return
+
+        @ctypes.CFUNCTYPE(ctypes.c_ulonglong, ctypes.c_void_p,
+            ctypes.POINTER(core.BNILEmulator),
+            ctypes.c_char_p, ctypes.c_ulonglong)
+        def _cb(ctxt, emu, buf, max_len):
+            try:
+                data = self._stdin_callback(self, max_len)
+                if data:
+                    n = min(len(data), max_len)
+                    ctypes.memmove(buf, data[:n], n)
+                    return n
+                return 0
+            except:
+                return 0
+
+        self._stdin_cb = _cb
+        core.BNILEmulatorSetStdinCallback(self._get_base(), None, _cb)
 
     # ── Built-in libc stub settings ──────────────────────────────────────
 

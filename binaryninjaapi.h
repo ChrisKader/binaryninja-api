@@ -22196,6 +22196,8 @@ namespace BinaryNinja {
 		std::function<bool(LLILEmulator*, size_t)> m_preInstructionHook;
 		std::function<bool(LLILEmulator*, uint32_t, const std::vector<uint64_t>&,
 			std::vector<std::pair<uint32_t, uint64_t>>&)> m_intrinsicHook;
+		std::function<void(LLILEmulator*, const std::string&)> m_stdoutCallback;
+		std::function<size_t(LLILEmulator*, char*, size_t)> m_stdinCallback;
 
 		// Static C bridge callbacks
 		static bool CallHookCallback(void* ctxt, BNILEmulator* emu, uint64_t target);
@@ -22208,6 +22210,8 @@ namespace BinaryNinja {
 		static bool IntrinsicHookCallback(void* ctxt, BNLLILEmulator* emu,
 			uint32_t intrinsic, const uint64_t* params, size_t paramCount,
 			uint64_t* outValues, uint32_t* outRegs, size_t* outCount);
+		static void StdoutCallbackBridge(void* ctxt, BNILEmulator* emu, const char* data, size_t len);
+		static size_t StdinCallbackBridge(void* ctxt, BNILEmulator* emu, char* buf, size_t maxLen);
 
 	  public:
 		LLILEmulator(Ref<BinaryView> view);
@@ -22226,6 +22230,7 @@ namespace BinaryNinja {
 		BNILEmulatorStopReason Step();
 		BNILEmulatorStopReason StepN(size_t n);
 		BNILEmulatorStopReason StepOver();
+		void RequestStop();
 
 		// State
 		size_t GetInstructionIndex() const;
@@ -22257,6 +22262,8 @@ namespace BinaryNinja {
 		void SetPreInstructionHook(const std::function<bool(LLILEmulator*, size_t)>& hook);
 		void SetIntrinsicHook(const std::function<bool(LLILEmulator*, uint32_t,
 			const std::vector<uint64_t>&, std::vector<std::pair<uint32_t, uint64_t>>&)>& hook);
+		void SetStdoutCallback(const std::function<void(LLILEmulator*, const std::string&)>& cb);
+		void SetStdinCallback(const std::function<size_t(LLILEmulator*, char*, size_t)>& cb);
 
 		// Register / flag / temp access
 		uint64_t GetRegister(uint32_t reg) const;
