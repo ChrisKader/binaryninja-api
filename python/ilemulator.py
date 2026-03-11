@@ -480,6 +480,15 @@ class LLILEmulator:
     def log_libc_calls(self, value: bool):
         core.BNLLILEmulatorSetLogLibcCalls(self.handle, value)
 
+    @property
+    def nop_unknown_externals(self) -> bool:
+        """Whether unhandled external calls are treated as no-ops returning 0 (default: False)."""
+        return core.BNLLILEmulatorIsNopUnknownExternals(self.handle)
+
+    @nop_unknown_externals.setter
+    def nop_unknown_externals(self, value: bool):
+        core.BNLLILEmulatorSetNopUnknownExternals(self.handle, value)
+
     # ── Reset ─────────────────────────────────────────────────────────────
 
     def reset(self):

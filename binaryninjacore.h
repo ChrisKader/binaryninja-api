@@ -9133,6 +9133,8 @@ extern "C"
 	BINARYNINJACOREAPI bool BNLLILEmulatorIsBuiltinLibcStubsEnabled(BNLLILEmulator* emu);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetLogLibcCalls(BNLLILEmulator* emu, bool enabled);
 	BINARYNINJACOREAPI bool BNLLILEmulatorIsLogLibcCalls(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetNopUnknownExternals(BNLLILEmulator* emu, bool enabled);
+	BINARYNINJACOREAPI bool BNLLILEmulatorIsNopUnknownExternals(BNLLILEmulator* emu);
 
 #ifdef __cplusplus
 }

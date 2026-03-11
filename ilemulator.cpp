@@ -422,6 +422,18 @@ bool LLILEmulator::IsLogLibcCalls() const
 }
 
 
+void LLILEmulator::SetNopUnknownExternals(bool enabled)
+{
+	BNLLILEmulatorSetNopUnknownExternals(m_object, enabled);
+}
+
+
+bool LLILEmulator::IsNopUnknownExternals() const
+{
+	return BNLLILEmulatorIsNopUnknownExternals(m_object);
+}
+
+
 // ─── Reset ───────────────────────────────────────────────────────────────────
 
 void LLILEmulator::Reset()

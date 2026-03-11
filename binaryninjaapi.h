@@ -22287,6 +22287,8 @@ namespace BinaryNinja {
 		bool IsBuiltinLibcStubsEnabled() const;
 		void SetLogLibcCalls(bool enabled);
 		bool IsLogLibcCalls() const;
+		void SetNopUnknownExternals(bool enabled);
+		bool IsNopUnknownExternals() const;
 
 		// Reset
 		void Reset();
