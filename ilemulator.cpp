@@ -53,6 +53,18 @@ void LLILEmulator::SetEntryPoint(Ref<LowLevelILFunction> il, size_t instrIndex)
 }
 
 
+void LLILEmulator::SetArgument(size_t index, uint64_t value)
+{
+	BNLLILEmulatorSetArgument(m_object, index, value);
+}
+
+
+void LLILEmulator::SetArguments(const std::vector<uint64_t>& values)
+{
+	BNLLILEmulatorSetArguments(m_object, values.data(), values.size());
+}
+
+
 // ─── Execution ───────────────────────────────────────────────────────────────
 
 BNILEmulatorStopReason LLILEmulator::Run()

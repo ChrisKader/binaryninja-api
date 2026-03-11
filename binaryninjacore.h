@@ -9057,6 +9057,9 @@ extern "C"
 	BINARYNINJACOREAPI bool BNLLILEmulatorSetEntryPoint(BNLLILEmulator* emu, uint64_t addr);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetEntryPointForIL(BNLLILEmulator* emu,
 		BNLowLevelILFunction* il, size_t instrIndex);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetArgument(BNLLILEmulator* emu, size_t index, uint64_t value);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetArguments(BNLLILEmulator* emu,
+		const uint64_t* values, size_t count);
 
 	// IL Emulator — execution control (shared)
 	BINARYNINJACOREAPI BNILEmulatorStopReason BNILEmulatorRun(BNILEmulator* emu);

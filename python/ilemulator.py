@@ -193,6 +193,18 @@ class LLILEmulator:
             result = core.BNLLILEmulatorSetEntryPoint(self.handle, addr_or_il)
             return result
 
+    # ── Arguments ─────────────────────────────────────────────────────────
+
+    def set_argument(self, index: int, value: int):
+        """Set a single function argument by index using the default calling convention."""
+        core.BNLLILEmulatorSetArgument(self.handle, index, value)
+
+    def set_arguments(self, values: list):
+        """Set multiple function arguments using the default calling convention."""
+        count = len(values)
+        arr = (ctypes.c_uint64 * count)(*values)
+        core.BNLLILEmulatorSetArguments(self.handle, arr, count)
+
     # ── Memory ────────────────────────────────────────────────────────────
 
     def read_memory(self, addr: int, length: int) -> bytes:

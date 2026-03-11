@@ -22217,6 +22217,10 @@ namespace BinaryNinja {
 		bool SetEntryPoint(uint64_t addr);
 		void SetEntryPoint(Ref<LowLevelILFunction> il, size_t instrIndex);
 
+		// Argument setup (uses default calling convention)
+		void SetArgument(size_t index, uint64_t value);
+		void SetArguments(const std::vector<uint64_t>& values);
+
 		// Execution
 		BNILEmulatorStopReason Run();
 		BNILEmulatorStopReason Step();
