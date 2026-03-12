@@ -529,3 +529,22 @@ void LLILEmulator::Reset()
 {
 	BNILEmulatorReset(BNLLILEmulatorGetBase(m_object));
 }
+
+
+// ─── State serialization ─────────────────────────────────────────────────────
+
+std::string LLILEmulator::SaveState() const
+{
+	char* json = BNLLILEmulatorSaveState(m_object);
+	if (!json)
+		return {};
+	std::string result(json);
+	BNFreeString(json);
+	return result;
+}
+
+
+bool LLILEmulator::LoadState(const std::string& json)
+{
+	return BNLLILEmulatorLoadState(m_object, json.c_str());
+}

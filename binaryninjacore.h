@@ -9145,6 +9145,10 @@ extern "C"
 	BINARYNINJACOREAPI void BNLLILEmulatorSetNopUnknownExternals(BNLLILEmulator* emu, bool enabled);
 	BINARYNINJACOREAPI bool BNLLILEmulatorIsNopUnknownExternals(BNLLILEmulator* emu);
 
+	// LLIL Emulator — state serialization
+	BINARYNINJACOREAPI char* BNLLILEmulatorSaveState(BNLLILEmulator* emu);
+	BINARYNINJACOREAPI bool BNLLILEmulatorLoadState(BNLLILEmulator* emu, const char* json);
+
 #ifdef __cplusplus
 }
 #endif

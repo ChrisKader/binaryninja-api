@@ -22304,6 +22304,10 @@ namespace BinaryNinja {
 
 		// Reset
 		void Reset();
+
+		// State serialization
+		std::string SaveState() const;
+		bool LoadState(const std::string& json);
 	};
 
 }  // namespace BinaryNinja

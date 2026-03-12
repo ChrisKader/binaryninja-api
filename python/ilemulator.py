@@ -589,3 +589,27 @@ class LLILEmulator:
     def reset(self):
         """Reset all emulator state (registers, memory, flags, call stack)."""
         core.BNILEmulatorReset(self._get_base())
+
+    # ── State serialization ──────────────────────────────────────────────
+
+    def save_state(self) -> str:
+        """Serialize emulator state to a JSON string."""
+        result = core.BNLLILEmulatorSaveState(self.handle)
+        if result is None:
+            return ""
+        return result
+
+    def load_state(self, json_str: str) -> bool:
+        """Restore emulator state from a JSON string."""
+        return core.BNLLILEmulatorLoadState(self.handle, json_str.encode('utf-8'))
+
+    def save_state_to_file(self, path: str):
+        """Save emulator state to a file."""
+        state = self.save_state()
+        with open(path, 'w') as f:
+            f.write(state)
+
+    def load_state_from_file(self, path: str) -> bool:
+        """Load emulator state from a file."""
+        with open(path, 'r') as f:
+            return self.load_state(f.read())
