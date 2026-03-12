@@ -53,9 +53,35 @@ void LLILEmulator::SetEntryPoint(Ref<LowLevelILFunction> il, size_t instrIndex)
 }
 
 
-void LLILEmulator::SetArgument(size_t index, uint64_t value)
+static void ApiUint512ToBytes(const intx::uint512& value, uint8_t* buf, size_t bufLen)
 {
-	BNLLILEmulatorSetArgument(m_object, index, value);
+	intx::uint512 tmp = value;
+	size_t n = std::min(bufLen, (size_t)64);
+	for (size_t i = 0; i < n; i++)
+	{
+		buf[i] = static_cast<uint8_t>(tmp);
+		tmp >>= 8;
+	}
+	for (size_t i = n; i < bufLen; i++)
+		buf[i] = 0;
+}
+
+
+static intx::uint512 ApiBytesToUint512(const uint8_t* buf, size_t bufLen)
+{
+	intx::uint512 result = 0;
+	size_t n = std::min(bufLen, (size_t)64);
+	for (size_t i = n; i > 0; i--)
+		result = (result << 8) | buf[i - 1];
+	return result;
+}
+
+
+void LLILEmulator::SetArgument(size_t index, const intx::uint512& value)
+{
+	uint8_t buf[64];
+	ApiUint512ToBytes(value, buf, sizeof(buf));
+	BNLLILEmulatorSetArgument(m_object, index, buf, sizeof(buf));
 }
 
 
@@ -215,17 +241,22 @@ bool LLILEmulator::SyscallHookCallback(void* ctxt, BNILEmulator*)
 
 
 bool LLILEmulator::MemoryReadHookCallback(
-	void* ctxt, BNILEmulator*, uint64_t addr, size_t size, uint64_t* value)
+	void* ctxt, BNILEmulator*, uint64_t addr, size_t size, uint8_t* outBuf, size_t bufLen)
 {
 	LLILEmulator* self = (LLILEmulator*)ctxt;
-	return self->m_memoryReadHook(self, addr, size, *value);
+	intx::uint512 value;
+	if (!self->m_memoryReadHook(self, addr, size, value))
+		return false;
+	ApiUint512ToBytes(value, outBuf, bufLen);
+	return true;
 }
 
 
 bool LLILEmulator::MemoryWriteHookCallback(
-	void* ctxt, BNILEmulator*, uint64_t addr, size_t size, uint64_t value)
+	void* ctxt, BNILEmulator*, uint64_t addr, size_t size, const uint8_t* buf, size_t bufLen)
 {
 	LLILEmulator* self = (LLILEmulator*)ctxt;
+	intx::uint512 value = ApiBytesToUint512(buf, bufLen);
 	return self->m_memoryWriteHook(self, addr, size, value);
 }
 
@@ -296,7 +327,7 @@ void LLILEmulator::SetSyscallHook(const std::function<bool(LLILEmulator*)>& hook
 
 
 void LLILEmulator::SetMemoryReadHook(
-	const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t&)>& hook)
+	const std::function<bool(LLILEmulator*, uint64_t, size_t, intx::uint512&)>& hook)
 {
 	m_memoryReadHook = hook;
 	BNILEmulatorSetMemoryReadHook(BNLLILEmulatorGetBase(m_object),
@@ -306,7 +337,7 @@ void LLILEmulator::SetMemoryReadHook(
 
 
 void LLILEmulator::SetMemoryWriteHook(
-	const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t)>& hook)
+	const std::function<bool(LLILEmulator*, uint64_t, size_t, const intx::uint512&)>& hook)
 {
 	m_memoryWriteHook = hook;
 	BNILEmulatorSetMemoryWriteHook(BNLLILEmulatorGetBase(m_object),
@@ -354,42 +385,50 @@ void LLILEmulator::SetStdinCallback(const std::function<size_t(LLILEmulator*, ch
 
 // ─── Register / flag / temp access ──────────────────────────────────────────
 
-uint64_t LLILEmulator::GetRegister(uint32_t reg) const
+intx::uint512 LLILEmulator::GetRegister(uint32_t reg) const
 {
-	return BNLLILEmulatorGetRegister(m_object, reg);
+	uint8_t buf[64] = {};
+	BNLLILEmulatorGetRegister(m_object, reg, buf, sizeof(buf));
+	return ApiBytesToUint512(buf, sizeof(buf));
 }
 
 
-void LLILEmulator::SetRegister(uint32_t reg, uint64_t value)
+void LLILEmulator::SetRegister(uint32_t reg, const intx::uint512& value)
 {
-	BNLLILEmulatorSetRegister(m_object, reg, value);
+	uint8_t buf[64];
+	ApiUint512ToBytes(value, buf, sizeof(buf));
+	BNLLILEmulatorSetRegister(m_object, reg, buf, sizeof(buf));
 }
 
 
-uint64_t LLILEmulator::GetTempRegister(uint32_t index) const
+intx::uint512 LLILEmulator::GetTempRegister(uint32_t index) const
 {
-	return BNLLILEmulatorGetTempRegister(m_object, index);
+	uint8_t buf[64] = {};
+	BNLLILEmulatorGetTempRegister(m_object, index, buf, sizeof(buf));
+	return ApiBytesToUint512(buf, sizeof(buf));
 }
 
 
-void LLILEmulator::SetTempRegister(uint32_t index, uint64_t value)
+void LLILEmulator::SetTempRegister(uint32_t index, const intx::uint512& value)
 {
-	BNLLILEmulatorSetTempRegister(m_object, index, value);
+	uint8_t buf[64];
+	ApiUint512ToBytes(value, buf, sizeof(buf));
+	BNLLILEmulatorSetTempRegister(m_object, index, buf, sizeof(buf));
 }
 
 
-std::unordered_map<uint32_t, uint64_t> LLILEmulator::GetAllTempRegisters() const
+std::unordered_map<uint32_t, intx::uint512> LLILEmulator::GetAllTempRegisters() const
 {
 	// Query count first, then fetch
 	size_t count = BNLLILEmulatorGetAllTempRegisters(m_object, nullptr, nullptr, 0);
-	std::unordered_map<uint32_t, uint64_t> result;
+	std::unordered_map<uint32_t, intx::uint512> result;
 	if (count == 0)
 		return result;
 	std::vector<uint32_t> indices(count);
-	std::vector<uint64_t> values(count);
+	std::vector<uint8_t> values(count * 64);
 	count = BNLLILEmulatorGetAllTempRegisters(m_object, indices.data(), values.data(), count);
 	for (size_t i = 0; i < count; i++)
-		result[indices[i]] = values[i];
+		result[indices[i]] = ApiBytesToUint512(values.data() + i * 64, 64);
 	return result;
 }
 

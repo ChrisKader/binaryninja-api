@@ -37,14 +37,14 @@
 // Current ABI version for linking to the core. This is incremented any time
 // there are changes to the API that affect linking, including new functions,
 // new types, or modifications to existing functions or types.
-#define BN_CURRENT_CORE_ABI_VERSION 158
+#define BN_CURRENT_CORE_ABI_VERSION 159
 
 // Minimum ABI version that is supported for loading of plugins. Plugins that
 // are linked to an ABI version less than this will not be able to load and
 // will require rebuilding. The minimum version is increased when there are
 // incompatible changes that break binary compatibility, such as changes to
 // existing types or functions.
-#define BN_MINIMUM_CORE_ABI_VERSION 158
+#define BN_MINIMUM_CORE_ABI_VERSION 159
 
 #ifdef __GNUC__
 	#ifdef BINARYNINJACORE_LIBRARY
@@ -9058,7 +9058,7 @@ extern "C"
 	BINARYNINJACOREAPI bool BNLLILEmulatorSetEntryPoint(BNLLILEmulator* emu, uint64_t addr);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetEntryPointForIL(BNLLILEmulator* emu,
 		BNLowLevelILFunction* il, size_t instrIndex);
-	BINARYNINJACOREAPI void BNLLILEmulatorSetArgument(BNLLILEmulator* emu, size_t index, uint64_t value);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetArgument(BNLLILEmulator* emu, size_t index, const uint8_t* buf, size_t bufLen);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetArguments(BNLLILEmulator* emu,
 		const uint64_t* values, size_t count);
 
@@ -9097,9 +9097,9 @@ extern "C"
 	BINARYNINJACOREAPI void BNILEmulatorSetSyscallHook(BNILEmulator* emu, void* ctxt,
 		bool (*callback)(void* ctxt, BNILEmulator* emu));
 	BINARYNINJACOREAPI void BNILEmulatorSetMemoryReadHook(BNILEmulator* emu, void* ctxt,
-		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint64_t* value));
+		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint8_t* outBuf, size_t bufLen));
 	BINARYNINJACOREAPI void BNILEmulatorSetMemoryWriteHook(BNILEmulator* emu, void* ctxt,
-		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, uint64_t value));
+		bool (*callback)(void* ctxt, BNILEmulator* emu, uint64_t addr, size_t size, const uint8_t* buf, size_t bufLen));
 	BINARYNINJACOREAPI void BNILEmulatorSetPreInstructionHook(BNILEmulator* emu, void* ctxt,
 		bool (*callback)(void* ctxt, BNILEmulator* emu, size_t instrIndex));
 	BINARYNINJACOREAPI void BNILEmulatorSetStdoutCallback(BNILEmulator* emu, void* ctxt,
@@ -9109,13 +9109,13 @@ extern "C"
 	BINARYNINJACOREAPI void BNILEmulatorRequestStop(BNILEmulator* emu);
 	BINARYNINJACOREAPI void BNILEmulatorReset(BNILEmulator* emu);
 
-	// LLIL Emulator — register/flag access
-	BINARYNINJACOREAPI uint64_t BNLLILEmulatorGetRegister(BNLLILEmulator* emu, uint32_t reg);
-	BINARYNINJACOREAPI void BNLLILEmulatorSetRegister(BNLLILEmulator* emu, uint32_t reg, uint64_t value);
-	BINARYNINJACOREAPI uint64_t BNLLILEmulatorGetTempRegister(BNLLILEmulator* emu, uint32_t index);
-	BINARYNINJACOREAPI void BNLLILEmulatorSetTempRegister(BNLLILEmulator* emu, uint32_t index, uint64_t value);
+	// LLIL Emulator — register/flag access (byte-buffer API; values are 64-byte little-endian)
+	BINARYNINJACOREAPI void BNLLILEmulatorGetRegister(BNLLILEmulator* emu, uint32_t reg, uint8_t* outBuf, size_t bufLen);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetRegister(BNLLILEmulator* emu, uint32_t reg, const uint8_t* buf, size_t bufLen);
+	BINARYNINJACOREAPI void BNLLILEmulatorGetTempRegister(BNLLILEmulator* emu, uint32_t index, uint8_t* outBuf, size_t bufLen);
+	BINARYNINJACOREAPI void BNLLILEmulatorSetTempRegister(BNLLILEmulator* emu, uint32_t index, const uint8_t* buf, size_t bufLen);
 	BINARYNINJACOREAPI size_t BNLLILEmulatorGetAllTempRegisters(
-		BNLLILEmulator* emu, uint32_t* outIndices, uint64_t* outValues, size_t maxCount);
+		BNLLILEmulator* emu, uint32_t* outIndices, uint8_t* outValues, size_t maxCount);
 	BINARYNINJACOREAPI uint8_t BNLLILEmulatorGetFlag(BNLLILEmulator* emu, uint32_t flag);
 	BINARYNINJACOREAPI void BNLLILEmulatorSetFlag(BNLLILEmulator* emu, uint32_t flag, uint8_t value);
 

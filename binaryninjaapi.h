@@ -30,6 +30,7 @@
 #include "base/compiler.h"
 #include "binaryninjacore.h"
 #include "exceptions.h"
+#include "vendor/intx/intx.hpp"
 
 #include "json/json.h"
 #include "rapidjsonwrapper.h"
@@ -22191,8 +22192,8 @@ namespace BinaryNinja {
 		// Stored hooks (prevent dangling captures)
 		std::function<bool(LLILEmulator*, uint64_t)> m_callHook;
 		std::function<bool(LLILEmulator*)> m_syscallHook;
-		std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t&)> m_memoryReadHook;
-		std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t)> m_memoryWriteHook;
+		std::function<bool(LLILEmulator*, uint64_t, size_t, intx::uint512&)> m_memoryReadHook;
+		std::function<bool(LLILEmulator*, uint64_t, size_t, const intx::uint512&)> m_memoryWriteHook;
 		std::function<bool(LLILEmulator*, size_t)> m_preInstructionHook;
 		std::function<bool(LLILEmulator*, uint32_t, const std::vector<uint64_t>&,
 			std::vector<std::pair<uint32_t, uint64_t>>&)> m_intrinsicHook;
@@ -22203,9 +22204,9 @@ namespace BinaryNinja {
 		static bool CallHookCallback(void* ctxt, BNILEmulator* emu, uint64_t target);
 		static bool SyscallHookCallback(void* ctxt, BNILEmulator* emu);
 		static bool MemoryReadHookCallback(void* ctxt, BNILEmulator* emu,
-			uint64_t addr, size_t size, uint64_t* value);
+			uint64_t addr, size_t size, uint8_t* outBuf, size_t bufLen);
 		static bool MemoryWriteHookCallback(void* ctxt, BNILEmulator* emu,
-			uint64_t addr, size_t size, uint64_t value);
+			uint64_t addr, size_t size, const uint8_t* buf, size_t bufLen);
 		static bool PreInstructionHookCallback(void* ctxt, BNILEmulator* emu, size_t instrIndex);
 		static bool IntrinsicHookCallback(void* ctxt, BNLLILEmulator* emu,
 			uint32_t intrinsic, const uint64_t* params, size_t paramCount,
@@ -22222,7 +22223,7 @@ namespace BinaryNinja {
 		void SetEntryPoint(Ref<LowLevelILFunction> il, size_t instrIndex);
 
 		// Argument setup (uses default calling convention)
-		void SetArgument(size_t index, uint64_t value);
+		void SetArgument(size_t index, const intx::uint512& value);
 		void SetArguments(const std::vector<uint64_t>& values);
 
 		// Execution
@@ -22257,8 +22258,8 @@ namespace BinaryNinja {
 		// Hooks
 		void SetCallHook(const std::function<bool(LLILEmulator*, uint64_t)>& hook);
 		void SetSyscallHook(const std::function<bool(LLILEmulator*)>& hook);
-		void SetMemoryReadHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t&)>& hook);
-		void SetMemoryWriteHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, uint64_t)>& hook);
+		void SetMemoryReadHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, intx::uint512&)>& hook);
+		void SetMemoryWriteHook(const std::function<bool(LLILEmulator*, uint64_t, size_t, const intx::uint512&)>& hook);
 		void SetPreInstructionHook(const std::function<bool(LLILEmulator*, size_t)>& hook);
 		void SetIntrinsicHook(const std::function<bool(LLILEmulator*, uint32_t,
 			const std::vector<uint64_t>&, std::vector<std::pair<uint32_t, uint64_t>>&)>& hook);
@@ -22266,11 +22267,11 @@ namespace BinaryNinja {
 		void SetStdinCallback(const std::function<size_t(LLILEmulator*, char*, size_t)>& cb);
 
 		// Register / flag / temp access
-		uint64_t GetRegister(uint32_t reg) const;
-		void SetRegister(uint32_t reg, uint64_t value);
-		uint64_t GetTempRegister(uint32_t index) const;
-		void SetTempRegister(uint32_t index, uint64_t value);
-		std::unordered_map<uint32_t, uint64_t> GetAllTempRegisters() const;
+		intx::uint512 GetRegister(uint32_t reg) const;
+		void SetRegister(uint32_t reg, const intx::uint512& value);
+		intx::uint512 GetTempRegister(uint32_t index) const;
+		void SetTempRegister(uint32_t index, const intx::uint512& value);
+		std::unordered_map<uint32_t, intx::uint512> GetAllTempRegisters() const;
 		uint8_t GetFlag(uint32_t flag) const;
 		void SetFlag(uint32_t flag, uint8_t value);
 

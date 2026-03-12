@@ -205,7 +205,9 @@ class LLILEmulator:
 
     def set_argument(self, index: int, value: int):
         """Set a single function argument by index using the default calling convention."""
-        core.BNLLILEmulatorSetArgument(self.handle, index, value)
+        raw = value.to_bytes(64, 'little', signed=(value < 0))
+        buf = (ctypes.c_ubyte * 64)(*raw)
+        core.BNLLILEmulatorSetArgument(self.handle, index, buf, 64)
 
     def set_arguments(self, values: list):
         """Set multiple function arguments using the default calling convention."""
@@ -273,17 +275,25 @@ class LLILEmulator:
 
     def get_register(self, reg) -> int:
         """Get register value.  *reg* can be a name (``'rax'``) or numeric ID."""
-        return core.BNLLILEmulatorGetRegister(self.handle, self._resolve_reg(reg))
+        buf = (ctypes.c_ubyte * 64)()
+        core.BNLLILEmulatorGetRegister(self.handle, self._resolve_reg(reg), buf, 64)
+        return int.from_bytes(bytes(buf), 'little')
 
     def set_register(self, reg, value: int):
         """Set register value.  *reg* can be a name (``'rax'``) or numeric ID."""
-        core.BNLLILEmulatorSetRegister(self.handle, self._resolve_reg(reg), value)
+        raw = value.to_bytes(64, 'little', signed=(value < 0))
+        buf = (ctypes.c_ubyte * 64)(*raw)
+        core.BNLLILEmulatorSetRegister(self.handle, self._resolve_reg(reg), buf, 64)
 
     def get_temp_register(self, index: int) -> int:
-        return core.BNLLILEmulatorGetTempRegister(self.handle, index)
+        buf = (ctypes.c_ubyte * 64)()
+        core.BNLLILEmulatorGetTempRegister(self.handle, index, buf, 64)
+        return int.from_bytes(bytes(buf), 'little')
 
     def set_temp_register(self, index: int, value: int):
-        core.BNLLILEmulatorSetTempRegister(self.handle, index, value)
+        raw = value.to_bytes(64, 'little', signed=(value < 0))
+        buf = (ctypes.c_ubyte * 64)(*raw)
+        core.BNLLILEmulatorSetTempRegister(self.handle, index, buf, 64)
 
     def get_flag(self, flag) -> int:
         """Get flag value.  *flag* can be a name (``'z'``) or numeric ID."""
@@ -372,12 +382,14 @@ class LLILEmulator:
         @ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p,
             ctypes.POINTER(core.BNILEmulator),
             ctypes.c_ulonglong, ctypes.c_ulonglong,
-            ctypes.POINTER(ctypes.c_ulonglong))
-        def _cb(ctxt, emu, addr, size, out_value):
+            ctypes.POINTER(ctypes.c_ubyte), ctypes.c_ulonglong)
+        def _cb(ctxt, emu, addr, size, out_buf, buf_len):
             try:
                 result = self._memory_read_hook(self, addr, size)
                 if result is not None:
-                    out_value[0] = result
+                    raw = result.to_bytes(buf_len, 'little', signed=(result < 0))
+                    for i in range(buf_len):
+                        out_buf[i] = raw[i]
                     return True
                 return False
             except:
@@ -403,9 +415,12 @@ class LLILEmulator:
 
         @ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p,
             ctypes.POINTER(core.BNILEmulator),
-            ctypes.c_ulonglong, ctypes.c_ulonglong, ctypes.c_ulonglong)
-        def _cb(ctxt, emu, addr, size, value):
+            ctypes.c_ulonglong, ctypes.c_ulonglong,
+            ctypes.POINTER(ctypes.c_ubyte), ctypes.c_ulonglong)
+        def _cb(ctxt, emu, addr, size, buf, buf_len):
             try:
+                raw = bytes(buf[:buf_len])
+                value = int.from_bytes(raw, 'little')
                 return self._memory_write_hook(self, addr, size, value)
             except:
                 return False
