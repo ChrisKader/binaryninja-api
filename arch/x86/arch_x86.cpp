@@ -2154,7 +2154,7 @@ size_t X86CommonArchitecture::GetFlagWriteLowLevelIL(BNLowLevelILOperation op, s
 	}
 
 	if (flagWriteType == IL_FLAGWRITE_X87RND && flag == IL_FLAG_C1)
-		return il.Undefined();
+		return il.Unimplemented(/*intentional=*/true);
 
 	if (((flagWriteType == IL_FLAGWRITE_X87COM) || (flagWriteType == IL_FLAGWRITE_X87C1Z)) && (flag == IL_FLAG_C1))
 		return il.Const(0, 0);

@@ -1564,7 +1564,6 @@ ExprId HighLevelILInstruction::CopyTo(
 	case HLIL_LOW_PART:
 	case HLIL_BOOL_TO_INT:
 	case HLIL_JUMP:
-	case HLIL_UNIMPL_MEM:
 	case HLIL_FSQRT:
 	case HLIL_FNEG:
 	case HLIL_FABS:
@@ -1576,6 +1575,8 @@ ExprId HighLevelILInstruction::CopyTo(
 	case HLIL_CEIL:
 	case HLIL_FTRUNC:
 		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()));
+	case HLIL_UNIMPL_MEM:
+		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()), GetRawOperandAsInteger(1));
 	case HLIL_ADD:
 	case HLIL_SUB:
 	case HLIL_AND:
@@ -1658,7 +1659,7 @@ ExprId HighLevelILInstruction::CopyTo(
 	case HLIL_UNDEF:
 		return dest->Undefined(loc);
 	case HLIL_UNIMPL:
-		return dest->Unimplemented(loc);
+		return dest->Unimplemented(As<HLIL_UNIMPL>().IsIntentional(), loc);
 	default:
 		throw HighLevelILInstructionAccessException();
 	}
@@ -3238,15 +3239,15 @@ ExprId HighLevelILFunction::Undefined(const ILSourceLocation& loc)
 }
 
 
-ExprId HighLevelILFunction::Unimplemented(const ILSourceLocation& loc)
+ExprId HighLevelILFunction::Unimplemented(bool intentional, const ILSourceLocation& loc)
 {
-	return AddExprWithLocation(HLIL_UNIMPL, loc, 0);
+	return AddExprWithLocation(HLIL_UNIMPL, loc, 0, intentional ? 1 : 0);
 }
 
 
-ExprId HighLevelILFunction::UnimplementedMemoryRef(size_t size, ExprId target, const ILSourceLocation& loc)
+ExprId HighLevelILFunction::UnimplementedMemoryRef(size_t size, ExprId target, bool intentional, const ILSourceLocation& loc)
 {
-	return AddExprWithLocation(HLIL_UNIMPL_MEM, loc, size, target);
+	return AddExprWithLocation(HLIL_UNIMPL_MEM, loc, size, target, intentional ? 1 : 0);
 }
 
 

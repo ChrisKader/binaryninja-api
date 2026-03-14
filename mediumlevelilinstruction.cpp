@@ -1762,7 +1762,6 @@ ExprId MediumLevelILInstruction::CopyTo(MediumLevelILFunction* dest,
 	case MLIL_BOOL_TO_INT:
 	case MLIL_JUMP:
 	case MLIL_RET_HINT:
-	case MLIL_UNIMPL_MEM:
 	case MLIL_FSQRT:
 	case MLIL_FNEG:
 	case MLIL_FABS:
@@ -1774,6 +1773,8 @@ ExprId MediumLevelILInstruction::CopyTo(MediumLevelILFunction* dest,
 	case MLIL_CEIL:
 	case MLIL_FTRUNC:
 		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()));
+	case MLIL_UNIMPL_MEM:
+		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()), GetRawOperandAsInteger(1));
 	case MLIL_ADD:
 	case MLIL_SUB:
 	case MLIL_AND:
@@ -1895,7 +1896,7 @@ ExprId MediumLevelILInstruction::CopyTo(MediumLevelILFunction* dest,
 	case MLIL_UNDEF:
 		return dest->Undefined(loc);
 	case MLIL_UNIMPL:
-		return dest->Unimplemented(loc);
+		return dest->Unimplemented(As<MLIL_UNIMPL>().IsIntentional(), loc);
 	default:
 		throw MediumLevelILInstructionAccessException();
 	}
@@ -2969,15 +2970,15 @@ ExprId MediumLevelILFunction::Undefined(const ILSourceLocation& loc)
 }
 
 
-ExprId MediumLevelILFunction::Unimplemented(const ILSourceLocation& loc)
+ExprId MediumLevelILFunction::Unimplemented(bool intentional, const ILSourceLocation& loc)
 {
-	return AddExprWithLocation(MLIL_UNIMPL, loc, 0);
+	return AddExprWithLocation(MLIL_UNIMPL, loc, 0, intentional ? 1 : 0);
 }
 
 
-ExprId MediumLevelILFunction::UnimplementedMemoryRef(size_t size, ExprId target, const ILSourceLocation& loc)
+ExprId MediumLevelILFunction::UnimplementedMemoryRef(size_t size, ExprId target, bool intentional, const ILSourceLocation& loc)
 {
-	return AddExprWithLocation(MLIL_UNIMPL_MEM, loc, size, target);
+	return AddExprWithLocation(MLIL_UNIMPL_MEM, loc, size, target, intentional ? 1 : 0);
 }
 
 

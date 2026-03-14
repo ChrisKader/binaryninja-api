@@ -5621,28 +5621,32 @@ class LowLevelILFunction:
 		"""
 		return self.expr(LowLevelILOperation.LLIL_UNDEF, source_location=loc)
 
-	def unimplemented(self, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
+	def unimplemented(self, intentional: bool = False, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
 		"""
 		``unimplemented`` returns the unimplemented expression. This should be used for all instructions which aren't
 		implemented.
 
+		:param bool intentional: if True, renders as ``unknown`` to indicate the value is genuinely unknowable at \
+		    analysis time (not a missing implementation)
 		:param ILSourceLocation loc: location of returned expression
 		:return: the unimplemented expression.
 		:rtype: ExpressionIndex
 		"""
-		return self.expr(LowLevelILOperation.LLIL_UNIMPL, source_location=loc)
+		return self.expr(LowLevelILOperation.LLIL_UNIMPL, intentional, source_location=loc)
 
-	def unimplemented_memory_ref(self, size: int, addr: ExpressionIndex, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
+	def unimplemented_memory_ref(self, size: int, addr: ExpressionIndex, intentional: bool = False, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
 		"""
 		``unimplemented_memory_ref`` a memory reference to expression ``addr`` of size ``size`` with unimplemented operation.
 
 		:param int size: size in bytes of the memory reference
 		:param ExpressionIndex addr: expression to reference memory
+		:param bool intentional: if True, renders as ``unknown`` to indicate the value is genuinely unknowable at \
+		    analysis time (not a missing implementation)
 		:param ILSourceLocation loc: location of returned expression
 		:return: the unimplemented memory reference expression.
 		:rtype: ExpressionIndex
 		"""
-		return self.expr(LowLevelILOperation.LLIL_UNIMPL_MEM, addr, size=size, source_location=loc)
+		return self.expr(LowLevelILOperation.LLIL_UNIMPL_MEM, addr, intentional, size=size, source_location=loc)
 
 	def float_add(
 	    self, size: int, a: ExpressionIndex, b: ExpressionIndex, flags: Optional['architecture.FlagWriteType'] = None,
