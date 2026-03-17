@@ -167,6 +167,7 @@ static constexpr std::array s_instructionOperandUsage = {
 	OperandUsage{MLIL_VAR_SPLIT, {HighVariableMediumLevelOperandUsage, LowVariableMediumLevelOperandUsage}},
 	OperandUsage{MLIL_ADDRESS_OF, {SourceVariableMediumLevelOperandUsage}},
 	OperandUsage{MLIL_ADDRESS_OF_FIELD, {SourceVariableMediumLevelOperandUsage, OffsetMediumLevelOperandUsage}},
+	OperandUsage{MLIL_PASS_BY_REF, {SourceExprMediumLevelOperandUsage}},
 	OperandUsage{MLIL_CONST, {ConstantMediumLevelOperandUsage}},
 	OperandUsage{MLIL_CONST_DATA, {ConstantDataMediumLevelOperandUsage}},
 	OperandUsage{MLIL_CONST_PTR, {ConstantMediumLevelOperandUsage}},
@@ -1487,6 +1488,7 @@ void MediumLevelILInstruction::VisitExprs(bn::base::function_ref<bool(const Medi
 	case MLIL_FLOOR:
 	case MLIL_CEIL:
 	case MLIL_FTRUNC:
+	case MLIL_PASS_BY_REF:
 		AsOneOperand().GetSourceExpr().VisitExprs(func);
 		break;
 	case MLIL_ADD:
@@ -1774,6 +1776,7 @@ ExprId MediumLevelILInstruction::CopyTo(MediumLevelILFunction* dest,
 	case MLIL_FLOOR:
 	case MLIL_CEIL:
 	case MLIL_FTRUNC:
+	case MLIL_PASS_BY_REF:
 		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()));
 	case MLIL_ADD:
 	case MLIL_SUB:
@@ -2430,6 +2433,12 @@ ExprId MediumLevelILFunction::AddressOf(const Variable& var, const ILSourceLocat
 ExprId MediumLevelILFunction::AddressOfField(const Variable& var, uint64_t offset, const ILSourceLocation& loc)
 {
 	return AddExprWithLocation(MLIL_ADDRESS_OF_FIELD, loc, 0, var.ToIdentifier(), offset);
+}
+
+
+ExprId MediumLevelILFunction::PassByRef(size_t size, ExprId src, const ILSourceLocation& loc)
+{
+	return AddExprWithLocation(MLIL_PASS_BY_REF, loc, size, src);
 }
 
 

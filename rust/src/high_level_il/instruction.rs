@@ -400,6 +400,9 @@ impl HighLevelILInstruction {
             HLIL_ADDRESS_OF => Op::AddressOf(UnaryOp {
                 src: HighLevelExpressionIndex::from(op.operands[0]),
             }),
+            HLIL_PASS_BY_REF => Op::PassByRef(UnaryOp {
+                src: HighLevelExpressionIndex::from(op.operands[0]),
+            }),
             HLIL_NEG => Op::Neg(UnaryOp {
                 src: HighLevelExpressionIndex::from(op.operands[0]),
             }),
@@ -784,6 +787,7 @@ impl HighLevelILInstruction {
 
             Deref(op) => Lifted::Deref(self.lift_unary_op(op)),
             AddressOf(op) => Lifted::AddressOf(self.lift_unary_op(op)),
+            PassByRef(op) => Lifted::PassByRef(self.lift_unary_op(op)),
             Neg(op) => Lifted::Neg(self.lift_unary_op(op)),
             Not(op) => Lifted::Not(self.lift_unary_op(op)),
             Sx(op) => Lifted::Sx(self.lift_unary_op(op)),
@@ -1161,6 +1165,7 @@ pub enum HighLevelILInstructionKind {
     ConstData(ConstData),
     Deref(UnaryOp),
     AddressOf(UnaryOp),
+    PassByRef(UnaryOp),
     Neg(UnaryOp),
     Not(UnaryOp),
     Sx(UnaryOp),

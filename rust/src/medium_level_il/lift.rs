@@ -176,6 +176,7 @@ pub enum MediumLevelILLiftedInstructionKind {
     Ret(LiftedRet),
     Var(Var),
     AddressOf(Var),
+    PassByRef(LiftedUnaryOp),
     VarField(Field),
     AddressOfField(Field),
     VarSsa(VarSsa),
@@ -323,6 +324,7 @@ impl MediumLevelILLiftedInstruction {
             Ret(_) => "Ret",
             Var(_) => "Var",
             AddressOf(_) => "AddressOf",
+            PassByRef(_) => "PassByRef",
             VarField(_) => "VarField",
             AddressOfField(_) => "AddressOfField",
             VarSsa(_) => "VarSsa",
@@ -546,6 +548,7 @@ impl MediumLevelILLiftedInstruction {
             SeparateParamList(op) => vec![("params", Operand::ExprList(op.params.clone()))],
             SharedParamSlot(op) => vec![("params", Operand::ExprList(op.params.clone()))],
             Var(op) | AddressOf(op) => vec![("src", Operand::Var(op.src))],
+            PassByRef(op) => vec![("src", Operand::Expr(*op.src.clone()))],
             VarField(op) | AddressOfField(op) => vec![
                 ("src", Operand::Var(op.src)),
                 ("offset", Operand::Int(op.offset)),

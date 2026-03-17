@@ -159,6 +159,7 @@ static constexpr std::array s_instructionOperandUsage = {
 	OperandUsage{HLIL_DEREF, {SourceExprHighLevelOperandUsage}},
 	OperandUsage{HLIL_DEREF_FIELD, {SourceExprHighLevelOperandUsage, OffsetHighLevelOperandUsage, MemberIndexHighLevelOperandUsage}},
 	OperandUsage{HLIL_ADDRESS_OF, {SourceExprHighLevelOperandUsage}},
+	OperandUsage{HLIL_PASS_BY_REF, {SourceExprHighLevelOperandUsage}},
 	OperandUsage{HLIL_CONST, {ConstantHighLevelOperandUsage}},
 	OperandUsage{HLIL_CONST_DATA, {ConstantDataHighLevelOperandUsage}},
 	OperandUsage{HLIL_CONST_PTR, {ConstantHighLevelOperandUsage}},
@@ -1265,6 +1266,7 @@ void HighLevelILInstruction::CollectSubExprs(stack<size_t>& toProcess) const
 	case HLIL_FLOOR:
 	case HLIL_CEIL:
 	case HLIL_FTRUNC:
+	case HLIL_PASS_BY_REF:
 		toProcess.push(AsOneOperand().GetSourceExpr().exprIndex);
 		break;
 	case HLIL_ADD:
@@ -1571,6 +1573,7 @@ ExprId HighLevelILInstruction::CopyTo(
 	case HLIL_FLOOR:
 	case HLIL_CEIL:
 	case HLIL_FTRUNC:
+	case HLIL_PASS_BY_REF:
 		return dest->AddExprWithLocation(operation, loc, size, subExprHandler(AsOneOperand().GetSourceExpr()));
 	case HLIL_ADD:
 	case HLIL_SUB:
@@ -2129,6 +2132,7 @@ bool HighLevelILInstruction::operator<(const HighLevelILInstruction& other) cons
 	case HLIL_FLOOR:
 	case HLIL_CEIL:
 	case HLIL_FTRUNC:
+	case HLIL_PASS_BY_REF:
 		if (size < other.size)
 			return true;
 		if (size > other.size)
@@ -2838,6 +2842,12 @@ ExprId HighLevelILFunction::DerefFieldSSA(
 ExprId HighLevelILFunction::AddressOf(ExprId src, const ILSourceLocation& loc)
 {
 	return AddExprWithLocation(HLIL_ADDRESS_OF, loc, 0, src);
+}
+
+
+ExprId HighLevelILFunction::PassByRef(size_t size, ExprId src, const ILSourceLocation& loc)
+{
+	return AddExprWithLocation(HLIL_PASS_BY_REF, loc, size, src);
 }
 
 

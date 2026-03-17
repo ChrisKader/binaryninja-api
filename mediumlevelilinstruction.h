@@ -1804,6 +1804,9 @@ namespace BinaryNinja
 	template <>
 	struct MediumLevelILInstructionAccessor<MLIL_FTRUNC> : public MediumLevelILOneOperandInstruction
 	{};
+	template <>
+	struct MediumLevelILInstructionAccessor<MLIL_PASS_BY_REF> : public MediumLevelILOneOperandInstruction
+	{};
 
 #undef _STD_VECTOR
 #undef _STD_SET

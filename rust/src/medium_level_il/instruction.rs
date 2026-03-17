@@ -655,6 +655,9 @@ impl MediumLevelILInstruction {
             MLIL_ADDRESS_OF => Op::AddressOf(Var {
                 src: get_var(op.operands[0]),
             }),
+            MLIL_PASS_BY_REF => Op::PassByRef(UnaryOp {
+                src: MediumLevelExpressionIndex::from(op.operands[0] as usize),
+            }),
             MLIL_VAR_FIELD => Op::VarField(Field {
                 src: get_var(op.operands[0]),
                 offset: op.operands[1],
@@ -1110,6 +1113,7 @@ impl MediumLevelILInstruction {
             }),
             Var(op) => Lifted::Var(op),
             AddressOf(op) => Lifted::AddressOf(op),
+            PassByRef(op) => Lifted::PassByRef(self.lift_unary_op(op)),
             VarField(op) => Lifted::VarField(op),
             AddressOfField(op) => Lifted::AddressOfField(op),
             VarSsa(op) => Lifted::VarSsa(op),
@@ -1830,6 +1834,7 @@ pub enum MediumLevelILInstructionKind {
     Ret(Ret),
     Var(Var),
     AddressOf(Var),
+    PassByRef(UnaryOp),
     VarField(Field),
     AddressOfField(Field),
     VarSsa(VarSsa),

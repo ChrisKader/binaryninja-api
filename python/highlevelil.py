@@ -210,7 +210,9 @@ class HighLevelILInstruction(BaseILInstruction):
 	    ], HighLevelILOperation.HLIL_DEREF_FIELD_SSA: [
 	        ("src", "expr"), ("src_memory", "int"), ("offset", "int"),
 	        ("member_index", "member_index")
-	    ], HighLevelILOperation.HLIL_ADDRESS_OF: [("src", "expr")], HighLevelILOperation.HLIL_CONST: [
+	    ], HighLevelILOperation.HLIL_ADDRESS_OF: [("src", "expr")], HighLevelILOperation.HLIL_PASS_BY_REF: [
+	        ("src", "expr")
+	    ], HighLevelILOperation.HLIL_CONST: [
 	        ("constant", "int")
 	    ], HighLevelILOperation.HLIL_CONST_PTR: [("constant", "int")], HighLevelILOperation.HLIL_EXTERN_PTR: [
 	        ("constant", "int"), ("offset", "int")
@@ -1744,6 +1746,11 @@ class HighLevelILAddressOf(HighLevelILUnaryBase):
 
 
 @dataclass(frozen=True, repr=False, eq=False)
+class HighLevelILPassByRef(HighLevelILUnaryBase):
+	pass
+
+
+@dataclass(frozen=True, repr=False, eq=False)
 class HighLevelILConst(HighLevelILInstruction, Constant):
 	@property
 	def constant(self) -> int:
@@ -2429,6 +2436,7 @@ ILInstruction = {
     HighLevelILOperation.HLIL_DEREF_FIELD_SSA:
         HighLevelILDerefFieldSsa,  #  ("src", "expr"), ("src_memory", "int"), ("offset", "int"), ("member_index", "member_index"),
     HighLevelILOperation.HLIL_ADDRESS_OF: HighLevelILAddressOf,  #  ("src", "expr"),
+	HighLevelILOperation.HLIL_PASS_BY_REF: HighLevelILPassByRef,  #  ("src", "expr"),
     HighLevelILOperation.HLIL_CONST: HighLevelILConst,  #  ("constant", "int"),
     HighLevelILOperation.HLIL_CONST_PTR: HighLevelILConstPtr,  #  ("constant", "int"),
     HighLevelILOperation.HLIL_EXTERN_PTR: HighLevelILExternPtr,  #  ("constant", "int"), ("offset", "int"),
@@ -3379,6 +3387,18 @@ class HighLevelILFunction:
 		:rtype: ExpressionIndex
 		"""
 		return self.expr(HighLevelILOperation.HLIL_ADDRESS_OF, src, size=0, source_location=loc)
+
+	def pass_by_ref(self, size: int, src: ExpressionIndex, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
+		"""
+		``pass_by_ref`` indicates that ``value`` is being passed by reference to a call with a pointer size of  ``size``
+
+		:param int size: the size of the pointer in bytes
+		:param ExpressionIndex src: the expression containing the reference being passed
+		:param ILSourceLocation loc: location of returned expression
+		:return: The expression ``ref *src``
+		:rtype: ExpressionIndex
+		"""
+		return self.expr(HighLevelILOperation.HLIL_PASS_BY_REF, src, size, source_location=loc)
 
 	def const(self, size: int, value: int, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
 		"""

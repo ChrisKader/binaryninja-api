@@ -218,7 +218,9 @@ class MediumLevelILInstruction(BaseILInstruction):
 	    MediumLevelILOperation.MLIL_VAR: [("src", "var")], MediumLevelILOperation.MLIL_VAR_FIELD: [
 	        ("src", "var"), ("offset", "int")
 	    ], MediumLevelILOperation.MLIL_VAR_SPLIT: [("high", "var"), ("low", "var")],
-	    MediumLevelILOperation.MLIL_ADDRESS_OF: [("src", "var")], MediumLevelILOperation.MLIL_ADDRESS_OF_FIELD: [
+	    MediumLevelILOperation.MLIL_ADDRESS_OF: [("src", "var")], MediumLevelILOperation.MLIL_PASS_BY_REF: [
+	        ("src", "expr")
+	    ], MediumLevelILOperation.MLIL_ADDRESS_OF_FIELD: [
 	        ("src", "var"), ("offset", "int")
 	    ], MediumLevelILOperation.MLIL_CONST: [("constant", "int")], MediumLevelILOperation.MLIL_CONST_PTR: [
 	        ("constant", "int")
@@ -1308,6 +1310,11 @@ class MediumLevelILAddressOf(MediumLevelILInstruction):
 	@property
 	def vars_address_taken(self) -> List[variable.Variable]:
 		return [self.src]
+
+
+@dataclass(frozen=True, repr=False, eq=False)
+class MediumLevelILPassByRef(MediumLevelILUnaryBase):
+	pass
 
 
 @dataclass(frozen=True, repr=False, eq=False)
@@ -3118,6 +3125,7 @@ ILInstruction = {
     MediumLevelILOperation.MLIL_LOAD: MediumLevelILLoad,  # [("src", "expr")],
     MediumLevelILOperation.MLIL_VAR: MediumLevelILVar,  # [("src", "var")],
     MediumLevelILOperation.MLIL_ADDRESS_OF: MediumLevelILAddressOf,  # [("src", "var")],
+    MediumLevelILOperation.MLIL_PASS_BY_REF: MediumLevelILPassByRef,  # [("src", "expr")],
     MediumLevelILOperation.MLIL_CONST: MediumLevelILConst,  # [("constant", "int")],
     MediumLevelILOperation.MLIL_CONST_PTR: MediumLevelILConstPtr,  # [("constant", "int")],
     MediumLevelILOperation.MLIL_FLOAT_CONST: MediumLevelILFloatConst,  # [("constant", "float")],
@@ -3740,6 +3748,9 @@ class MediumLevelILFunction:
 			if expr.operation == MediumLevelILOperation.MLIL_ADDRESS_OF:
 				expr: MediumLevelILAddressOf
 				return dest.address_of(expr.src, loc)
+			if expr.operation == MediumLevelILOperation.MLIL_PASS_BY_REF:
+				expr: MediumLevelILPassByRef
+				return dest.pass_by_ref(expr.size, expr.src, loc)
 			if expr.operation == MediumLevelILOperation.MLIL_ADDRESS_OF_FIELD:
 				expr: MediumLevelILAddressOfField
 				return dest.address_of_field(expr.src, expr.offset, loc)
@@ -4366,6 +4377,18 @@ class MediumLevelILFunction:
 		:rtype: ExpressionIndex
 		"""
 		return self.expr(MediumLevelILOperation.MLIL_ADDRESS_OF, var.identifier, size=0, source_location=loc)
+
+	def pass_by_ref(self, size: int, value: ExpressionIndex, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
+		"""
+		``pass_by_ref`` indicates that ``value`` is being passed by reference to a call with a pointer size of  ``size``
+
+		:param int size: the size of the pointer in bytes
+		:param ExpressionIndex value: the expression containing the reference being passed
+		:param ILSourceLocation loc: location of returned expression
+		:return: The expression ``ref *value``
+		:rtype: ExpressionIndex
+		"""
+		return self.expr(MediumLevelILOperation.MLIL_PASS_BY_REF, value, size=size, source_location=loc)
 
 	def address_of_field(self, var: 'variable.Variable', offset: int, loc: Optional['ILSourceLocation'] = None) -> ExpressionIndex:
 		"""
