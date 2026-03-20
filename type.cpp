@@ -776,7 +776,7 @@ FunctionParameter FunctionParameter::FromAPIObject(const BNFunctionParameter* pa
 	result.name = param->name;
 	result.type =
 		Confidence<Ref<Type>>(param->type ? new Type(BNNewTypeReference(param->type)) : nullptr, param->typeConfidence);
-	result.defaultLocation = param->defaultLocation;
+	result.locationSource = param->locationSource;
 	result.location = ValueLocation::FromAPIObject(&param->location);
 	return result;
 }
@@ -788,7 +788,7 @@ BNFunctionParameter FunctionParameter::ToAPIObject() const
 	result.name = (char*)name.c_str();
 	result.type = type->GetObject();
 	result.typeConfidence = type.GetConfidence();
-	result.defaultLocation = defaultLocation;
+	result.locationSource = locationSource;
 	result.location = location.ToAPIObject();
 	return result;
 }

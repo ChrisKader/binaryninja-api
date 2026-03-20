@@ -173,9 +173,13 @@ vector<InstructionTextToken> RustTypePrinter::GetTypeTokensAfterNameInternal(
 			}
 			tokens.push_back(nameToken);
 			tokens.emplace_back(TextToken, ": ");
+
+			if (params[i].locationSource == PassByReferenceLocationSource || params[i].location.indirect)
+				tokens.emplace_back(baseConfidence, OperationToken, "&");
+
 			tokens.insert(tokens.end(), paramTokens.begin(), paramTokens.end());
 
-			if (!params[i].defaultLocation && platform && var.has_value())
+			if (params[i].locationSource == CustomLocationSource && platform && var.has_value())
 			{
 				switch (var->type)
 				{

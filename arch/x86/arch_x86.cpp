@@ -4863,7 +4863,7 @@ public:
 
 		for (auto& param : params)
 		{
-			if (!param.defaultLocation)
+			if (param.locationSource == CustomLocationSource)
 			{
 				// Parameter is not stored in a normal location, use custom variable
 				result.push_back(param.location);
@@ -4887,7 +4887,8 @@ public:
 			size_t width = type->GetWidth();
 			bool indirect = false;
 
-			if (type->GetClass() == ArrayTypeClass)
+			if ((type->GetClass() == ArrayTypeClass || param.locationSource == PassByReferenceLocationSource)
+				&& param.locationSource != PassByValueLocationSource)
 			{
 				type = Type::PointerType(GetArchitecture(), type);
 				indirect = true;

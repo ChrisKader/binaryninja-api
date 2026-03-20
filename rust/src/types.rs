@@ -1427,10 +1427,27 @@ impl Into<ReturnValue> for &Conf<Ref<Type>> {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ValueLocationSource {
+    Default,
+    PassByValue,
+    PassByReference,
+    Custom(ValueLocation),
+}
+
+impl From<Option<ValueLocation>> for ValueLocationSource {
+    fn from(loc: Option<ValueLocation>) -> Self {
+        match loc {
+            Some(loc) => ValueLocationSource::Custom(loc),
+            None => ValueLocationSource::Default,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct FunctionParameter {
     pub ty: Conf<Ref<Type>>,
     pub name: String,
-    pub location: Option<ValueLocation>,
+    pub location: ValueLocationSource,
 }
 
 impl FunctionParameter {
@@ -1449,9 +1466,17 @@ impl FunctionParameter {
                 value.typeConfidence,
             ),
             name,
-            location: match value.defaultLocation {
-                false => Some(ValueLocation::from_raw(&value.location)),
-                true => None,
+            location: match value.locationSource {
+                BNValueLocationSource::DefaultLocationSource => ValueLocationSource::Default,
+                BNValueLocationSource::PassByValueLocationSource => {
+                    ValueLocationSource::PassByValue
+                }
+                BNValueLocationSource::PassByReferenceLocationSource => {
+                    ValueLocationSource::PassByReference
+                }
+                BNValueLocationSource::CustomLocationSource => {
+                    ValueLocationSource::Custom(ValueLocation::from_raw(&value.location))
+                }
             },
         }
     }
@@ -1469,12 +1494,24 @@ impl FunctionParameter {
             name: BnString::into_raw(bn_name),
             type_: unsafe { Ref::into_raw(value.ty.contents) }.handle,
             typeConfidence: value.ty.confidence,
-            defaultLocation: value.location.is_none(),
-            location: ValueLocation::into_rust_raw(&value.location.unwrap_or(ValueLocation {
-                components: Vec::new(),
-                indirect: false,
-                returned_pointer: None,
-            })),
+            locationSource: match value.location {
+                ValueLocationSource::Default => BNValueLocationSource::DefaultLocationSource,
+                ValueLocationSource::PassByValue => {
+                    BNValueLocationSource::PassByValueLocationSource
+                }
+                ValueLocationSource::PassByReference => {
+                    BNValueLocationSource::PassByReferenceLocationSource
+                }
+                ValueLocationSource::Custom(_) => BNValueLocationSource::CustomLocationSource,
+            },
+            location: match &value.location {
+                ValueLocationSource::Custom(loc) => ValueLocation::into_rust_raw(loc),
+                _ => ValueLocation::into_rust_raw(&ValueLocation {
+                    components: Vec::new(),
+                    indirect: false,
+                    returned_pointer: None,
+                }),
+            },
         }
     }
 
@@ -1487,12 +1524,12 @@ impl FunctionParameter {
     pub fn new<T: Into<Conf<Ref<Type>>>>(
         ty: T,
         name: String,
-        location: Option<ValueLocation>,
+        location: impl Into<ValueLocationSource>,
     ) -> Self {
         Self {
             ty: ty.into(),
             name,
-            location: location.map(|v| v.into()),
+            location: location.into(),
         }
     }
 }

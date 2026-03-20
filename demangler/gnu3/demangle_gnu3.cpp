@@ -312,7 +312,7 @@ TypeBuilder DemangleGNU3::DemangleFunction(bool cnst, bool vltl)
 			continue;
 		MyLogDebug("Var_%d - %s\n", i++, param.GetString().c_str());
 		m_functionSubstitute.back().push_back(param);
-		params.push_back({"", param.Finalize(), true, Variable()});
+		params.push_back({"", param.Finalize(), DefaultLocationSource, Variable()});
 	}
 	m_reader.Consume();
 	m_functionSubstitute.pop_back();
@@ -1640,12 +1640,12 @@ void DemangleGNU3::DemangleTemplateArgs(vector<FunctionParameter>& args)
 		{
 		case 'L':
 			expr = DemanglePrimaryExpression();
-			args.push_back({expr, nullptr, true, Variable()});
+			args.push_back({expr, nullptr, DefaultLocationSource, Variable()});
 			tmp = CreateUnknownType(expr);
 			tmpValid = true;
 			break;
 		case 'X':
-			args.push_back({DemangleExpression(), nullptr, true, Variable()});
+			args.push_back({DemangleExpression(), nullptr, DefaultLocationSource, Variable()});
 			if (m_reader.Read() != 'E')
 				throw DemangleException();
 			break;
@@ -1658,7 +1658,7 @@ void DemangleGNU3::DemangleTemplateArgs(vector<FunctionParameter>& args)
 			m_topLevel = false;
 			tmp = DemangleType();
 			m_topLevel = topLevel;
-			args.push_back({tmp.GetString(), nullptr, true, Variable()});
+			args.push_back({tmp.GetString(), nullptr, DefaultLocationSource, Variable()});
 			tmpValid = true;
 		}
 		if (m_topLevel && tmpValid)
@@ -2202,7 +2202,7 @@ TypeBuilder DemangleGNU3::DemangleSymbol(QualifiedName& varName)
 			break;
 		}
 		m_functionSubstitute.back().push_back(param);
-		params.push_back({"", param.Finalize(), true, Variable()});
+		params.push_back({"", param.Finalize(), DefaultLocationSource, Variable()});
 		if (param.GetClass() == VarArgsTypeClass)
 		{
 			if (m_reader.Peek() == 'E')

@@ -1,7 +1,7 @@
 use binaryninja::architecture::{ArchitectureExt, CoreArchitecture};
 use binaryninja::confidence::Conf;
 use binaryninja::rc::Ref;
-use binaryninja::types::{FunctionParameter, Type, ValueLocation};
+use binaryninja::types::{FunctionParameter, Type, ValueLocation, ValueLocationSource};
 use swift_demangler::{
     Accessor, AccessorKind, ConstructorKind, HasFunctionSignature, HasModule, Metadata,
     MetadataKind, Symbol,
@@ -78,7 +78,7 @@ impl CallingConvention {
         self.leading_params.push(FunctionParameter {
             ty: self_ty.into(),
             name: "self".to_string(),
-            location: None,
+            location: ValueLocationSource::Default,
         });
     }
 
@@ -98,12 +98,12 @@ impl CallingConvention {
         self.trailing_params.push(FunctionParameter {
             ty: void_ptr.clone().into(),
             name: "selfMetadata".to_string(),
-            location: None,
+            location: ValueLocationSource::Default,
         });
         self.trailing_params.push(FunctionParameter {
             ty: void_ptr.into(),
             name: "selfWitnessTable".to_string(),
-            location: None,
+            location: ValueLocationSource::Default,
         });
     }
 
@@ -139,7 +139,7 @@ impl CallingConvention {
             all_params.push(FunctionParameter {
                 ty: error_ty.into(),
                 name: "error".to_string(),
-                location: self.abi.as_ref().and_then(|a| a.error_location()),
+                location: self.abi.as_ref().and_then(|a| a.error_location()).into(),
             });
         }
 
@@ -148,7 +148,11 @@ impl CallingConvention {
             all_params.push(FunctionParameter {
                 ty: ptr_ty.into(),
                 name: "asyncContext".to_string(),
-                location: self.abi.as_ref().and_then(|a| a.async_context_location()),
+                location: self
+                    .abi
+                    .as_ref()
+                    .and_then(|a| a.async_context_location())
+                    .into(),
             });
         }
 
@@ -240,7 +244,7 @@ pub fn build_function_type(symbol: &Symbol, arch: &CoreArchitecture) -> Option<R
             Some(FunctionParameter {
                 ty: ty.into(),
                 name,
-                location: None,
+                location: ValueLocationSource::Default,
             })
         })
         .collect();
@@ -283,7 +287,7 @@ fn build_accessor_type(accessor: &Accessor, arch: &CoreArchitecture) -> Option<R
             let params = vec![FunctionParameter {
                 ty: prop_ty.into(),
                 name: "newValue".to_string(),
-                location: None,
+                location: ValueLocationSource::Default,
             }];
             Some(cc.build_type(&Type::void(), params))
         }
@@ -309,12 +313,12 @@ fn build_metadata_function_type(metadata: &Metadata, arch: &CoreArchitecture) ->
                 FunctionParameter {
                     ty: void_ptr.clone().into(),
                     name: "metadata".to_string(),
-                    location: None,
+                    location: ValueLocationSource::Default,
                 },
                 FunctionParameter {
                     ty: void_ptr.clone().into(),
                     name: "method".to_string(),
-                    location: None,
+                    location: ValueLocationSource::Default,
                 },
             ];
             Some(Type::function(&void_ptr, params, false))

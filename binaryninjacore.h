@@ -2637,12 +2637,20 @@ extern "C"
 		uint8_t confidence;
 	} BNValueLocationListWithConfidence;
 
+	BN_ENUM(uint8_t, BNValueLocationSource)
+	{
+		DefaultLocationSource,
+		PassByValueLocationSource,
+		PassByReferenceLocationSource,
+		CustomLocationSource
+	};
+
 	typedef struct BNFunctionParameter
 	{
 		char* name;
 		BNType* type;
 		uint8_t typeConfidence;
-		bool defaultLocation;
+		BNValueLocationSource locationSource;
 		BNValueLocation location;
 	} BNFunctionParameter;
 

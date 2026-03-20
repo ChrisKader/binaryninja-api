@@ -10604,16 +10604,16 @@ namespace BinaryNinja {
 	{
 		std::string name;
 		Confidence<Ref<Type>> type;
-		bool defaultLocation;
+		BNValueLocationSource locationSource;
 		ValueLocation location;
 
 		FunctionParameter() = default;
-		FunctionParameter(const std::string& name, Confidence<Ref<Type>> type): name(name), type(type), defaultLocation(true)
+		FunctionParameter(const std::string& name, Confidence<Ref<Type>> type): name(name), type(type), locationSource(DefaultLocationSource)
 		{}
 
-		FunctionParameter(const std::string& name, const Confidence<Ref<Type>>& type, bool defaultLocation,
+		FunctionParameter(const std::string& name, const Confidence<Ref<Type>>& type, BNValueLocationSource source,
 		    const ValueLocation& location) :
-		    name(name), type(type), defaultLocation(defaultLocation), location(location)
+		    name(name), type(type), locationSource(source), location(location)
 		{}
 
 		static FunctionParameter FromAPIObject(const BNFunctionParameter* param);

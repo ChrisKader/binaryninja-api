@@ -28,7 +28,7 @@ import uuid
 from . import _binaryninjacore as core
 from .enums import (
 	InlineDuringAnalysis, StructureVariant, SymbolType, SymbolBinding, TypeClass, NamedTypeReferenceClass,
-	ReferenceType, VariableSourceType,
+	ReferenceType, VariableSourceType, ValueLocationSource,
 	TypeReferenceType, MemberAccess, MemberScope, TypeDefinitionLineType,
 	TokenEscapingType,
 	NameType, PointerSuffix, PointerBaseType
@@ -624,16 +624,21 @@ class ReturnValue:
 class FunctionParameter:
 	type: SomeType
 	name: str = ""
+	location_source: ValueLocationSource = ValueLocationSource.DefaultLocationSource
 	location: Optional['ValueLocation'] = None
 
-	def __init__(self, type: SomeType, name: str = "", location: OptionalLocation = None):
+	def __init__(self, type: SomeType, name: str = "", location: OptionalLocation = None, source: Optional['ValueLocationSource'] = None):
 		self.type = type
 		self.name = name
 		location = ValueLocationWithConfidence.from_optional_location(location)
 		if location is not None:
 			self.location = location.location
+			self.location_source = ValueLocationSource.CustomLocationSource
 		else:
 			self.location = None
+			self.location_source = ValueLocationSource.DefaultLocationSource
+		if source is not None:
+			self.location_source = source
 
 	def __repr__(self):
 		ic = self.type.immutable_copy()
@@ -651,11 +656,12 @@ class FunctionParameter:
 	def _from_core_struct(struct: 'core.BNFunctionParameter', arch: Optional['architecture.Architecture'] = None) -> 'FunctionParameter':
 		name = struct.name
 		ty = Type.from_core_struct(struct.type).with_confidence(struct.typeConfidence)
-		if struct.defaultLocation:
-			location = None
-		else:
+		source = ValueLocationSource(struct.locationSource)
+		if source == ValueLocationSource.CustomLocationSource:
 			location = ValueLocation._from_core_struct(struct.location, arch)
-		return FunctionParameter(ty, name, location)
+		else:
+			location = None
+		return FunctionParameter(ty, name, location, source)
 
 
 @dataclass(frozen=True)
@@ -1514,10 +1520,11 @@ class FunctionBuilder(TypeBuilder):
 			param_type = Type.create(
 			    core.BNNewTypeReference(params[i].type), platform=self.platform, confidence=params[i].typeConfidence
 			)
-			if params[i].defaultLocation:
-				param_location = None
-			else:
+			source = ValueLocationSource(params[i].locationSource)
+			if source == ValueLocationSource.CustomLocationSource:
 				param_location = ValueLocation._from_core_struct(params[i].location, arch)
+			else:
+				param_location = None
 			result.append(FunctionParameter(param_type, params[i].name, param_location))
 		core.BNFreeTypeParameterList(params, count.value)
 		return result
@@ -1546,7 +1553,7 @@ class FunctionBuilder(TypeBuilder):
 				core_param.name = ""
 				core_param.type = param.handle
 				core_param.typeConfidence = param.confidence
-				core_param.defaultLocation = True
+				core_param.locationSource = int(ValueLocationSource.DefaultLocationSource)
 				core_param.location.count = 0
 			elif isinstance(param, FunctionParameter):
 				assert param.type is not None, "Attempting to construct function parameter without properly constructed type"
@@ -1555,11 +1562,10 @@ class FunctionBuilder(TypeBuilder):
 				core_param.name = param.name
 				core_param.type = param_type.handle
 				core_param.typeConfidence = param_type.confidence
+				core_param.locationSource = int(param.location_source)
 				if param.location is None:
-					core_param.defaultLocation = True
 					core_param.location.count = 0
 				else:
-					core_param.defaultLocation = False
 					if isinstance(param.location, ValueLocation):
 						core_param.location = param.location._to_core_struct()
 					elif isinstance(param.location, variable.CoreVariable):
@@ -1575,7 +1581,7 @@ class FunctionBuilder(TypeBuilder):
 				core_param.name = name
 				core_param.type = _type.handle
 				core_param.typeConfidence = _type.confidence
-				core_param.defaultLocation = True
+				core_param.locationSource = int(ValueLocationSource.DefaultLocationSource)
 				core_param.location.count = 0
 			else:
 				raise ValueError(f"Conversion from unsupported function parameter type {type(param)}")
@@ -3472,11 +3478,12 @@ class FunctionType(Type):
 			param_type = Type.create(
 			    core.BNNewTypeReference(params[i].type), platform=self._platform, confidence=params[i].typeConfidence
 			)
-			if params[i].defaultLocation:
-				param_location = None
-			else:
+			source = ValueLocationSource(params[i].locationSource)
+			if source == ValueLocationSource.CustomLocationSource:
 				param_location = ValueLocation._from_core_struct(params[i].location, arch)
-			result.append(FunctionParameter(param_type, params[i].name, param_location))
+			else:
+				param_location = None
+			result.append(FunctionParameter(param_type, params[i].name, param_location, source))
 		core.BNFreeTypeParameterList(params, count.value)
 		return result
 
