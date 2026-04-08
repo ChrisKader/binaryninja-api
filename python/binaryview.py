@@ -10058,6 +10058,146 @@ to a the type "tagRECT" found in the typelibrary "winX64common"
 
 			return self.QueueGenerator(t, results)
 
+	@overload
+	def find_all_text_in_function(
+	    self, func: '_function.Function', text: str, settings: Optional[_function.DisassemblySettings] = None,
+	    flags=FindFlag.FindCaseSensitive, graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph,
+	    progress_func=None, match_callback=None
+	) -> QueueGenerator: ...
+
+	@overload
+	def find_all_text_in_function(
+	    self, func: '_function.Function', text: str, settings: Optional[_function.DisassemblySettings] = None,
+	    flags=FindFlag.FindCaseSensitive, graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph,
+	    progress_func=None, match_callback: TextMatchCallbackType = None
+	) -> bool: ...
+
+	def find_all_text_in_function(
+	    self, func: '_function.Function', text: str, settings: Optional[_function.DisassemblySettings] = None,
+	    flags=FindFlag.FindCaseSensitive, graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph,
+	    progress_func=None, match_callback: Optional[TextMatchCallbackType] = None
+	) -> Union[QueueGenerator, bool]:
+		if not isinstance(func, _function.Function):
+			raise TypeError("func parameter is not Function type")
+		if settings is None:
+			settings = _function.DisassemblySettings()
+			settings.set_option(DisassemblyOption.ShowAddress, False)
+			settings.set_option(DisassemblyOption.ShowOpcode, False)
+			settings.set_option(DisassemblyOption.ShowVariableTypesWhenAssigned, True)
+			settings.set_option(DisassemblyOption.WaitForIL, True)
+		if not isinstance(settings, _function.DisassemblySettings):
+			raise TypeError("settings parameter is not DisassemblySettings type")
+		if not isinstance(flags, FindFlag):
+			raise TypeError('flag parameter must have type FindFlag')
+		graph_type = _function.FunctionViewType(graph_type)._to_core_struct()
+
+		if progress_func:
+			progress_func_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_ulonglong
+			)(lambda ctxt, cur, total: progress_func(cur, total))
+		else:
+			progress_func_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_ulonglong
+			)(lambda ctxt, cur, total: True)
+
+		if match_callback:
+			match_callback_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_char_p,
+			    ctypes.POINTER(core.BNLinearDisassemblyLine)
+			)(
+			    lambda ctxt, addr, match, line:
+			    not match_callback(addr, core.pyNativeStr(match), self._LinearDisassemblyLine_convertor(line)) is False
+			)
+
+			return core.BNFindAllTextInFunctionWithProgress(
+			    func.handle, text, settings.handle, flags, graph_type, None, progress_func_obj, None,
+			    match_callback_obj
+			)
+		else:
+			results = queue.Queue()
+			match_callback_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_char_p,
+			    ctypes.POINTER(core.BNLinearDisassemblyLine)
+			)(
+			    lambda ctxt, addr, match, line: results.put((addr, core.pyNativeStr(match), self._LinearDisassemblyLine_convertor(line)))
+			    or True
+			)
+
+			t = threading.Thread(
+			    target=lambda: core.BNFindAllTextInFunctionWithProgress(
+			        func.handle, text, settings.handle, flags, graph_type, None, progress_func_obj, None,
+			        match_callback_obj
+			    )
+			)
+
+			return self.QueueGenerator(t, results)
+
+	@overload
+	def find_all_constant_in_function(
+	    self, func: '_function.Function', constant: int, settings: Optional[_function.DisassemblySettings] = None,
+	    graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph, progress_func: Optional[ProgressFuncType] = None,
+	    match_callback: None = None
+	) -> QueueGenerator: ...
+
+	@overload
+	def find_all_constant_in_function(
+	    self, func: '_function.Function', constant: int, settings: Optional[_function.DisassemblySettings] = None,
+	    graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph, progress_func: Optional[ProgressFuncType] = None,
+	    match_callback: LineMatchCallbackType = None
+	) -> bool: ...
+
+	def find_all_constant_in_function(
+	    self, func: '_function.Function', constant: int, settings: Optional[_function.DisassemblySettings] = None,
+	    graph_type: _function.FunctionViewTypeOrName = FunctionGraphType.NormalFunctionGraph, progress_func: Optional[ProgressFuncType] = None,
+	    match_callback: Optional[LineMatchCallbackType] = None
+	) -> Union[QueueGenerator, bool]:
+		if not isinstance(func, _function.Function):
+			raise TypeError("func parameter is not Function type")
+		if not isinstance(constant, int):
+			raise TypeError("constant parameter is not integral type")
+		if settings is None:
+			settings = _function.DisassemblySettings()
+			settings.set_option(DisassemblyOption.ShowAddress, False)
+			settings.set_option(DisassemblyOption.ShowOpcode, False)
+			settings.set_option(DisassemblyOption.ShowVariableTypesWhenAssigned, True)
+			settings.set_option(DisassemblyOption.WaitForIL, True)
+		if not isinstance(settings, _function.DisassemblySettings):
+			raise TypeError("settings parameter is not DisassemblySettings type")
+		graph_type = _function.FunctionViewType(graph_type)._to_core_struct()
+
+		if progress_func:
+			progress_func_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_ulonglong
+			)(lambda ctxt, cur, total: progress_func(cur, total))
+		else:
+			progress_func_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_ulonglong
+			)(lambda ctxt, cur, total: True)
+
+		if match_callback:
+			match_callback_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(core.BNLinearDisassemblyLine)
+			)(lambda ctxt, addr, line: not match_callback(addr, self._LinearDisassemblyLine_convertor(line)) is False)
+
+			return core.BNFindAllConstantInFunctionWithProgress(
+			    func.handle, constant, settings.handle, graph_type, None, progress_func_obj, None,
+			    match_callback_obj
+			)
+		else:
+			results = queue.Queue()
+			match_callback_obj = ctypes.CFUNCTYPE(
+			    ctypes.c_bool, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.POINTER(core.BNLinearDisassemblyLine)
+			)(lambda ctxt, addr, line: results.put((addr, self._LinearDisassemblyLine_convertor(line))) or True)
+
+			t = threading.Thread(
+			    target=lambda: core.BNFindAllConstantInFunctionWithProgress(
+			        func.handle, constant, settings.handle, graph_type, None, progress_func_obj, None,
+			        match_callback_obj
+			    )
+			)
+
+			return self.QueueGenerator(t, results)
+
 	def search(self, pattern: str, start: Optional[int] = None, end: Optional[int] = None, raw: bool = False, ignore_case: bool = False, overlap: bool = False, align: int = 1,
 		limit: Optional[int] = None, progress_callback: Optional[ProgressFuncType] = None, match_callback: Optional[DataMatchCallbackType] = None) -> QueueGenerator:
 		r"""

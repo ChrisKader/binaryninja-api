@@ -7688,7 +7688,15 @@ namespace BinaryNinja {
 		    const ProgressFunction& progress,
 		    const std::function<bool(uint64_t addr, const std::string& match, const LinearDisassemblyLine& line)>&
 		        matchCallback);
+		bool FindAllText(Function* func, const std::string& data, Ref<DisassemblySettings> settings,
+			BNFindFlag flags, const FunctionViewType& viewType,
+		    const ProgressFunction& progress,
+		    const std::function<bool(uint64_t addr, const std::string& match, const LinearDisassemblyLine& line)>&
+		        matchCallback);
 		bool FindAllConstant(uint64_t start, uint64_t end, uint64_t constant, Ref<DisassemblySettings> settings,
+			const FunctionViewType& viewType, const ProgressFunction& progress,
+		    const std::function<bool(uint64_t addr, const LinearDisassemblyLine& line)>& matchCallback);
+		bool FindAllConstant(Function* func, uint64_t constant, Ref<DisassemblySettings> settings,
 			const FunctionViewType& viewType, const ProgressFunction& progress,
 		    const std::function<bool(uint64_t addr, const LinearDisassemblyLine& line)>& matchCallback);
 

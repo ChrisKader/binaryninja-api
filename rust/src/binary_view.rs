@@ -56,7 +56,7 @@ use crate::variable::DataVariable;
 use crate::workflow::Workflow;
 use crate::{Endianness, BN_FULL_CONFIDENCE};
 use std::collections::{BTreeMap, HashMap};
-use std::ffi::{c_char, c_void, CString};
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
@@ -492,6 +492,91 @@ pub trait BinaryViewExt: BinaryViewBase {
         } else {
             None
         }
+    }
+
+    fn find_all_text_in_function_with_opts<
+        P: ProgressCallback,
+        C: FnMut(u64, &str, &LinearDisassemblyLine) -> bool,
+    >(
+        &self,
+        func: &Function,
+        text: &str,
+        disasm_settings: &DisassemblySettings,
+        flag: FindFlag,
+        view_type: FunctionViewType,
+        mut on_match: C,
+        mut progress: P,
+    ) -> bool {
+        unsafe extern "C" fn cb_on_match<C: FnMut(u64, &str, &LinearDisassemblyLine) -> bool>(
+            ctxt: *mut c_void,
+            addr: u64,
+            match_text: *const c_char,
+            line: *mut BNLinearDisassemblyLine,
+        ) -> bool {
+            let ctxt: &mut C = &mut *(ctxt as *mut C);
+            let match_text = CStr::from_ptr(match_text).to_string_lossy().into_owned();
+            let wrapped_line = LinearDisassemblyLine::from_raw(&*line);
+            BNFreeLinearDisassemblyLines(line, 1);
+            ctxt(addr, &match_text, &wrapped_line)
+        }
+
+        let text = text.to_cstr();
+        let raw_view_type = FunctionViewType::into_raw(view_type);
+        let found = unsafe {
+            BNFindAllTextInFunctionWithProgress(
+                func.handle,
+                text.as_ptr(),
+                disasm_settings.handle,
+                flag,
+                raw_view_type,
+                &mut progress as *mut P as *mut c_void,
+                Some(P::cb_progress_callback),
+                &mut on_match as *mut C as *mut c_void,
+                Some(cb_on_match::<C>),
+            )
+        };
+        FunctionViewType::free_raw(raw_view_type);
+        found
+    }
+
+    fn find_all_constant_in_function_with_opts<
+        P: ProgressCallback,
+        C: FnMut(u64, &LinearDisassemblyLine) -> bool,
+    >(
+        &self,
+        func: &Function,
+        constant: u64,
+        disasm_settings: &DisassemblySettings,
+        view_type: FunctionViewType,
+        mut on_match: C,
+        mut progress: P,
+    ) -> bool {
+        unsafe extern "C" fn cb_on_match<C: FnMut(u64, &LinearDisassemblyLine) -> bool>(
+            ctxt: *mut c_void,
+            addr: u64,
+            line: *mut BNLinearDisassemblyLine,
+        ) -> bool {
+            let ctxt: &mut C = &mut *(ctxt as *mut C);
+            let wrapped_line = LinearDisassemblyLine::from_raw(&*line);
+            BNFreeLinearDisassemblyLines(line, 1);
+            ctxt(addr, &wrapped_line)
+        }
+
+        let raw_view_type = FunctionViewType::into_raw(view_type);
+        let found = unsafe {
+            BNFindAllConstantInFunctionWithProgress(
+                func.handle,
+                constant,
+                disasm_settings.handle,
+                raw_view_type,
+                &mut progress as *mut P as *mut c_void,
+                Some(P::cb_progress_callback),
+                &mut on_match as *mut C as *mut c_void,
+                Some(cb_on_match::<C>),
+            )
+        };
+        FunctionViewType::free_raw(raw_view_type);
+        found
     }
 
     fn notify_data_written(&self, offset: u64, len: usize) {

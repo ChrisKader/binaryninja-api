@@ -4686,7 +4686,15 @@ extern "C"
 	    const char* data, BNDisassemblySettings* settings, BNFindFlag flags, BNFunctionViewType viewType, void* ctxt,
 	    BNProgressFunction progress, void* matchCtxt,
 	    bool (*matchCallback)(void* matchCtxt, uint64_t addr, const char* match, BNLinearDisassemblyLine* line));
+	BINARYNINJACOREAPI bool BNFindAllTextInFunctionWithProgress(BNFunction* func,
+	    const char* data, BNDisassemblySettings* settings, BNFindFlag flags, BNFunctionViewType viewType, void* ctxt,
+	    BNProgressFunction progress, void* matchCtxt,
+	    bool (*matchCallback)(void* matchCtxt, uint64_t addr, const char* match, BNLinearDisassemblyLine* line));
 	BINARYNINJACOREAPI bool BNFindAllConstantWithProgress(BNBinaryView* view, uint64_t start, uint64_t end,
+	    uint64_t constant, BNDisassemblySettings* settings, BNFunctionViewType viewType, void* ctxt,
+	    BNProgressFunction progress, void* matchCtxt,
+	    bool (*matchCallback)(void* matchCtxt, uint64_t addr, BNLinearDisassemblyLine* line));
+	BINARYNINJACOREAPI bool BNFindAllConstantInFunctionWithProgress(BNFunction* func,
 	    uint64_t constant, BNDisassemblySettings* settings, BNFunctionViewType viewType, void* ctxt,
 	    BNProgressFunction progress, void* matchCtxt,
 	    bool (*matchCallback)(void* matchCtxt, uint64_t addr, BNLinearDisassemblyLine* line));

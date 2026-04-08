@@ -5095,6 +5095,20 @@ bool BinaryView::FindAllText(uint64_t start, uint64_t end, const std::string& da
 }
 
 
+bool BinaryView::FindAllText(Function* func, const std::string& data, Ref<DisassemblySettings> settings,
+	BNFindFlag flags, const FunctionViewType& viewType, const ProgressFunction& progress,
+	const std::function<bool(uint64_t addr, const std::string& match, const LinearDisassemblyLine& line)>&
+		matchCallback)
+{
+	ProgressContext fp;
+	fp.callback = progress;
+	MatchCallbackContextForText mc;
+	mc.func = matchCallback;
+	return BNFindAllTextInFunctionWithProgress(func->GetObject(), data.c_str(), settings->GetObject(), flags,
+		viewType.ToAPIObject(), &fp, ProgressCallback, &mc, MatchCallbackForText);
+}
+
+
 bool BinaryView::FindAllConstant(uint64_t start, uint64_t end, uint64_t constant, Ref<DisassemblySettings> settings,
     const FunctionViewType& viewType, const ProgressFunction& progress,
     const std::function<bool(uint64_t addr, const LinearDisassemblyLine& line)>& matchCallback)
@@ -5105,6 +5119,19 @@ bool BinaryView::FindAllConstant(uint64_t start, uint64_t end, uint64_t constant
 	mc.func = matchCallback;
 	return BNFindAllConstantWithProgress(m_object, start, end, constant, settings->GetObject(), viewType.ToAPIObject(), &fp,
 	    ProgressCallback, &mc, MatchCallbackForConstant);
+}
+
+
+bool BinaryView::FindAllConstant(Function* func, uint64_t constant, Ref<DisassemblySettings> settings,
+	const FunctionViewType& viewType, const ProgressFunction& progress,
+	const std::function<bool(uint64_t addr, const LinearDisassemblyLine& line)>& matchCallback)
+{
+	ProgressContext fp;
+	fp.callback = progress;
+	MatchCallbackContextForConstant mc;
+	mc.func = matchCallback;
+	return BNFindAllConstantInFunctionWithProgress(func->GetObject(), constant, settings->GetObject(),
+		viewType.ToAPIObject(), &fp, ProgressCallback, &mc, MatchCallbackForConstant);
 }
 
 
