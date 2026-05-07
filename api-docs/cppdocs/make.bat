@@ -17,15 +17,16 @@ if "%1" == "clean" (
 )
 
 if "%1" == "html" (
+    poetry sync --no-root
     %PYTHON% build_min_docs.py
     exit /b
 )
 
 if "%1" == "docset" (
+    poetry sync --no-root
     %PYTHON% build_min_docs.py --docset
     exit /b
 )
 
 echo Unknown target: %1
 exit /b 1
-

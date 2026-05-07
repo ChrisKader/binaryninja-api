@@ -16,8 +16,10 @@ clean:
 
 .PHONY: html
 html:
+	poetry sync --no-root
 	$(PYTHON) ./build_min_docs.py
 
 .PHONY: docset
 docset:
+	poetry sync --no-root
 	$(PYTHON) ./build_min_docs.py --docset
