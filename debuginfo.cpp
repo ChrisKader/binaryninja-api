@@ -150,6 +150,27 @@ vector<DataVariableAndName> DebugInfo::GetDataVariables(const string& parserName
 	return result;
 }
 
+vector<DebugSourceLineInfo> DebugInfo::GetSourceLines(const string& parserName) const
+{
+	size_t count;
+	BNDebugSourceLineInfo* sourceLines =
+	    BNGetDebugSourceLines(m_object, parserName.size() == 0 ? nullptr : parserName.c_str(), &count);
+
+	if (sourceLines == nullptr)
+		return {};
+
+	vector<DebugSourceLineInfo> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; ++i)
+	{
+		result.emplace_back(sourceLines[i].sourceFile ? sourceLines[i].sourceFile : "",
+			sourceLines[i].address, sourceLines[i].line, sourceLines[i].column);
+	}
+
+	BNFreeDebugSourceLines(sourceLines, count);
+	return result;
+}
+
 
 // May return nullptr
 Ref<Type> DebugInfo::GetTypeByName(const string& parserName, const string& name) const
@@ -250,6 +271,28 @@ vector<tuple<string, string, Ref<Type>>> DebugInfo::GetDataVariablesByAddress(co
 	return result;
 }
 
+vector<tuple<string, DebugSourceLineInfo>> DebugInfo::GetSourceLinesByAddress(const uint64_t address) const
+{
+	size_t count;
+	BNDebugSourceLineInfo* sourceLines = BNGetDebugSourceLinesByAddress(m_object, address, &count);
+
+	if (sourceLines == nullptr)
+		return {};
+
+	vector<tuple<string, DebugSourceLineInfo>> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; ++i)
+	{
+		// Parser names are not currently returned by this C API. Preserve the tuple shape for future
+		// consistency with other debug-info lookup helpers.
+		result.emplace_back("", DebugSourceLineInfo(sourceLines[i].sourceFile ? sourceLines[i].sourceFile : "",
+			sourceLines[i].address, sourceLines[i].line, sourceLines[i].column));
+	}
+
+	BNFreeDebugSourceLines(sourceLines, count);
+	return result;
+}
+
 
 bool DebugInfo::RemoveParserInfo(const string& parserName)
 {
@@ -272,6 +315,11 @@ bool DebugInfo::RemoveParserFunctions(const string& parserName)
 bool DebugInfo::RemoveParserDataVariables(const string& parserName)
 {
 	return BNRemoveDebugParserDataVariables(m_object, parserName.c_str());
+}
+
+bool DebugInfo::RemoveParserSourceLines(const string& parserName)
+{
+	return BNRemoveDebugParserSourceLines(m_object, parserName.c_str());
 }
 
 
@@ -353,6 +401,19 @@ bool DebugInfo::AddDataVariable(uint64_t address, Ref<Type> type, const string& 
 	if (name.size() == 0)
 		return BNAddDebugDataVariable(m_object, address, type->GetObject(), nullptr, componentArray, components.size());
 	return BNAddDebugDataVariable(m_object, address, type->GetObject(), name.c_str(), componentArray, components.size());
+}
+
+bool DebugInfo::AddSourceLine(const DebugSourceLineInfo& lineInfo)
+{
+	BNDebugSourceLineInfo input;
+	input.sourceFile = lineInfo.sourceFile.size() ? BNAllocString(lineInfo.sourceFile.c_str()) : nullptr;
+	input.address = lineInfo.address;
+	input.line = lineInfo.line;
+	input.column = lineInfo.column;
+
+	bool result = BNAddDebugSourceLine(m_object, &input);
+	BNFreeString(input.sourceFile);
+	return result;
 }
 
 

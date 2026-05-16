@@ -19933,6 +19933,21 @@ namespace BinaryNinja {
 	/*!
 		\ingroup debuginfo
 	*/
+	struct DebugSourceLineInfo
+	{
+		std::string sourceFile;
+		uint64_t address;
+		uint32_t line;
+		uint32_t column;
+
+		DebugSourceLineInfo(std::string sourceFile, uint64_t address, uint32_t line, uint32_t column = 0) :
+			sourceFile(sourceFile), address(address), line(line), column(column)
+		{}
+	};
+
+	/*!
+		\ingroup debuginfo
+	*/
 	class DebugInfo : public CoreRefCountObject<BNDebugInfo, BNNewDebugInfoReference, BNFreeDebugInfoReference>
 	{
 	  public:
@@ -19950,6 +19965,7 @@ namespace BinaryNinja {
 		std::vector<NameAndType> GetTypes(const std::string& parserName = "") const;
 		std::vector<DebugFunctionInfo> GetFunctions(const std::string& parserName = "") const;
 		std::vector<DataVariableAndName> GetDataVariables(const std::string& parserName = "") const;
+		std::vector<DebugSourceLineInfo> GetSourceLines(const std::string& parserName = "") const;
 
 		Ref<Type> GetTypeByName(const std::string& parserName, const std::string& name) const;
 		std::optional<std::tuple<uint64_t, Ref<Type>>> GetDataVariableByName(
@@ -19961,11 +19977,14 @@ namespace BinaryNinja {
 		std::vector<std::tuple<std::string, uint64_t, Ref<Type>>> GetDataVariablesByName(const std::string& name) const;
 		std::vector<std::tuple<std::string, std::string, Ref<Type>>> GetDataVariablesByAddress(
 			const uint64_t address) const;
+		std::vector<std::tuple<std::string, DebugSourceLineInfo>> GetSourceLinesByAddress(
+			const uint64_t address) const;
 
 		bool RemoveParserInfo(const std::string& parserName);
 		bool RemoveParserTypes(const std::string& parserName);
 		bool RemoveParserFunctions(const std::string& parserName);
 		bool RemoveParserDataVariables(const std::string& parserName);
+		bool RemoveParserSourceLines(const std::string& parserName);
 
 		bool RemoveTypeByName(const std::string& parserName, const std::string& name);
 		bool RemoveFunctionByIndex(const std::string& parserName, const size_t index);
@@ -19974,6 +19993,7 @@ namespace BinaryNinja {
 		bool AddType(const std::string& name, Ref<Type> type, const std::vector<std::string>& components = {});
 		bool AddFunction(const DebugFunctionInfo& function);
 		bool AddDataVariable(uint64_t address, Ref<Type> type, const std::string& name = "", const std::vector<std::string>& components = {});
+		bool AddSourceLine(const DebugSourceLineInfo& lineInfo);
 	};
 
 	/*!

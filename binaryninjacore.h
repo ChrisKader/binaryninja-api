@@ -861,10 +861,10 @@ extern "C"
 		RelativeToBinaryStartDisassemblyAddressMode,
 		RelativeToSegmentStartDisassemblyAddressMode,
 		RelativeToSectionStartDisassemblyAddressMode,
-		RelativeToFunctionStartDisassemblyAddressMode,
-		RelativeToAddressBaseOffsetDisassemblyAddressMode,
-		RelativeToDataStartDisassemblyAddressMode,
-		DisassemblyAddressModeMask = 0xFFFF,
+	RelativeToFunctionStartDisassemblyAddressMode,
+	RelativeToAddressBaseOffsetDisassemblyAddressMode,
+	RelativeToDataStartDisassemblyAddressMode,
+	DisassemblyAddressModeMask = 0xFFFF,
 
 		IncludeNameDisassemblyAddressModeFlag = 0x10000,
 		DecimalDisassemblyAddressModeFlag = 0x20000,
@@ -3556,6 +3556,14 @@ extern "C"
 		BNVariableNameAndType* localVariables;
 		size_t localVariableN;
 	} BNDebugFunctionInfo;
+
+	typedef struct BNDebugSourceLineInfo
+	{
+		char* sourceFile;
+		uint64_t address;
+		uint32_t line;
+		uint32_t column;
+	} BNDebugSourceLineInfo;
 
 	typedef struct BNSecretsProviderCallbacks
 	{
@@ -8360,6 +8368,8 @@ extern "C"
 	BINARYNINJACOREAPI bool BNRemoveDebugParserFunctions(BNDebugInfo* const debugInfo, const char* const parserName);
 	BINARYNINJACOREAPI bool BNRemoveDebugParserDataVariables(
 		BNDebugInfo* const debugInfo, const char* const parserName);
+	BINARYNINJACOREAPI bool BNRemoveDebugParserSourceLines(
+		BNDebugInfo* const debugInfo, const char* const parserName);
 	BINARYNINJACOREAPI bool BNAddDebugType(
 		BNDebugInfo* const debugInfo, const char* const name, const BNType* const type, const char** const components, size_t components_count);
 	BINARYNINJACOREAPI BNNameAndType* BNGetDebugTypes(
@@ -8377,6 +8387,12 @@ extern "C"
 	BINARYNINJACOREAPI bool BNRemoveDebugFunctionByIndex(
 		BNDebugInfo* const debugInfo, const char* const parserName, const size_t index);
 	BINARYNINJACOREAPI void BNFreeDebugFunctions(BNDebugFunctionInfo* functions, size_t count);
+	BINARYNINJACOREAPI bool BNAddDebugSourceLine(BNDebugInfo* const debugInfo, BNDebugSourceLineInfo* lineInfo);
+	BINARYNINJACOREAPI BNDebugSourceLineInfo* BNGetDebugSourceLines(
+		BNDebugInfo* const debugInfo, const char* const name, size_t* count);
+	BINARYNINJACOREAPI BNDebugSourceLineInfo* BNGetDebugSourceLinesByAddress(
+		BNDebugInfo* const debugInfo, uint64_t address, size_t* count);
+	BINARYNINJACOREAPI void BNFreeDebugSourceLines(BNDebugSourceLineInfo* sourceLines, size_t count);
 	BINARYNINJACOREAPI bool BNAddDebugDataVariable(
 		BNDebugInfo* const debugInfo, uint64_t address, const BNType* const type, const char* name, const char** const components, size_t components_count);
 	BINARYNINJACOREAPI bool BNAddDebugDataVariableInfo(

@@ -296,6 +296,20 @@ class DebugFunctionInfo(object):
 			return f"<debug-info function{suffix}"
 
 
+@dataclass(frozen=True)
+class DebugSourceLineInfo(object):
+	"""Source file and line number information associated with an instruction address."""
+	source_file: str
+	address: int
+	line: int
+	column: int = 0
+
+	def __repr__(self) -> str:
+		if self.column:
+			return f"<debug-info source line: {self.source_file}:{self.line}:{self.column} @{self.address:#x}>"
+		return f"<debug-info source line: {self.source_file}:{self.line} @{self.address:#x}>"
+
+
 class DebugInfo(object):
 	"""
 	``class DebugInfo`` provides an interface to both provide and query debug info. The DebugInfo object is used
@@ -421,6 +435,44 @@ class DebugInfo(object):
 		"""A generator of all data variables provided by DebugInfoParsers"""
 		return self.data_variables_from_parser()
 
+	def source_lines_from_parser(self, name: Optional[str] = None) -> Iterator[DebugSourceLineInfo]:
+		"""Returns a generator of all source lines provided by a named DebugInfoParser"""
+		count = ctypes.c_ulonglong(0)
+		source_lines = core.BNGetDebugSourceLines(self.handle, name, count)
+		try:
+			assert source_lines is not None, "core.BNGetDebugSourceLines returned None"
+			for i in range(0, count.value):
+				yield DebugSourceLineInfo(
+				    source_lines[i].sourceFile,
+				    source_lines[i].address,
+				    source_lines[i].line,
+				    source_lines[i].column,
+				)
+		finally:
+			core.BNFreeDebugSourceLines(source_lines, count.value)
+
+	@property
+	def source_lines(self) -> Iterator[DebugSourceLineInfo]:
+		"""A generator of all source lines provided by DebugInfoParsers"""
+		return self.source_lines_from_parser()
+
+	def get_source_lines_by_address(self, address: int) -> List[DebugSourceLineInfo]:
+		count = ctypes.c_ulonglong()
+		source_lines = core.BNGetDebugSourceLinesByAddress(self.handle, address, count)
+		try:
+			result = []
+			for i in range(count.value):
+				assert source_lines is not None, "core.BNGetDebugSourceLinesByAddress returned None"
+				result.append(DebugSourceLineInfo(
+				    source_lines[i].sourceFile,
+				    source_lines[i].address,
+				    source_lines[i].line,
+				    source_lines[i].column,
+				))
+			return result
+		finally:
+			core.BNFreeDebugSourceLines(source_lines, count.value)
+
 	def get_type_by_name(self, parser_name: str, name: str) -> Optional[_types.Type]:
 		result = core.BNGetDebugTypeByName(self.handle, parser_name, name)
 		if result is not None:
@@ -499,6 +551,9 @@ class DebugInfo(object):
 
 	def remove_parser_data_variables(self, parser_name: str):
 		return core.BNRemoveDebugParserDataVariables(self.handle, parser_name)
+
+	def remove_parser_source_lines(self, parser_name: str):
+		return core.BNRemoveDebugParserSourceLines(self.handle, parser_name)
 
 	def remove_type_by_name(self, parser_name: str, name: str):
 		return core.BNRemoveDebugTypeByName(self.handle, parser_name, name)
@@ -592,3 +647,15 @@ class DebugInfo(object):
 		if isinstance(address, int) and isinstance(new_type, _types.Type):
 			return core.BNAddDebugDataVariable(self.handle, address, new_type.handle, name, component_list, len(components))
 		return NotImplemented
+
+	def add_source_line(self, source_line: DebugSourceLineInfo) -> bool:
+		"""Adds source file and line information scoped under the current parser's name to the debug info"""
+		if not isinstance(source_line, DebugSourceLineInfo):
+			return NotImplemented
+
+		line_info = core.BNDebugSourceLineInfo()
+		line_info.sourceFile = source_line.source_file
+		line_info.address = source_line.address
+		line_info.line = source_line.line
+		line_info.column = source_line.column
+		return core.BNAddDebugSourceLine(self.handle, line_info)

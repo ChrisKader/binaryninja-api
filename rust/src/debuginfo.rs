@@ -386,6 +386,38 @@ impl DebugFunctionInfo {
     }
 }
 
+///////////////////////
+// DebugSourceLineInfo
+
+/// Source file and line number information associated with an instruction address.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DebugSourceLineInfo {
+    pub source_file: String,
+    pub address: u64,
+    pub line: u32,
+    pub column: u32,
+}
+
+impl DebugSourceLineInfo {
+    pub(crate) fn from_raw(value: &BNDebugSourceLineInfo) -> Self {
+        Self {
+            source_file: raw_to_string(value.sourceFile).unwrap_or_default(),
+            address: value.address,
+            line: value.line,
+            column: value.column,
+        }
+    }
+
+    pub fn new(source_file: String, address: u64, line: u32, column: u32) -> Self {
+        Self {
+            source_file,
+            address,
+            line,
+            column,
+        }
+    }
+}
+
 ///////////////
 // DebugInfo
 
@@ -478,6 +510,42 @@ impl DebugInfo {
         let data_variables_ptr =
             unsafe { BNGetDebugDataVariables(self.handle, std::ptr::null_mut(), &mut count) };
         unsafe { Array::new(data_variables_ptr, count, ()) }
+    }
+
+    /// Returns all source line entries within the parser.
+    pub fn source_lines_by_name(&self, parser_name: &str) -> Vec<DebugSourceLineInfo> {
+        let parser_name = parser_name.to_cstr();
+
+        let mut count: usize = 0;
+        let source_lines_ptr =
+            unsafe { BNGetDebugSourceLines(self.handle, parser_name.as_ptr(), &mut count) };
+
+        let result: Vec<DebugSourceLineInfo> = unsafe {
+            std::slice::from_raw_parts_mut(source_lines_ptr, count)
+                .iter()
+                .map(DebugSourceLineInfo::from_raw)
+                .collect()
+        };
+
+        unsafe { BNFreeDebugSourceLines(source_lines_ptr, count) };
+        result
+    }
+
+    /// Returns all source line entries.
+    pub fn source_lines(&self) -> Vec<DebugSourceLineInfo> {
+        let mut count: usize = 0;
+        let source_lines_ptr =
+            unsafe { BNGetDebugSourceLines(self.handle, std::ptr::null_mut(), &mut count) };
+
+        let result: Vec<DebugSourceLineInfo> = unsafe {
+            std::slice::from_raw_parts_mut(source_lines_ptr, count)
+                .iter()
+                .map(DebugSourceLineInfo::from_raw)
+                .collect()
+        };
+
+        unsafe { BNFreeDebugSourceLines(source_lines_ptr, count) };
+        result
     }
 
     pub fn type_by_name(&self, parser_name: &str, name: &str) -> Option<Ref<Type>> {
@@ -597,6 +665,12 @@ impl DebugInfo {
         let parser_name = parser_name.to_cstr();
 
         unsafe { BNRemoveDebugParserDataVariables(self.handle, parser_name.as_ptr()) }
+    }
+
+    pub fn remove_parser_source_lines(&self, parser_name: &str) -> bool {
+        let parser_name = parser_name.to_cstr();
+
+        unsafe { BNRemoveDebugParserSourceLines(self.handle, parser_name.as_ptr()) }
     }
 
     pub fn remove_type_by_name(&self, parser_name: &str, name: &str) -> bool {
@@ -747,6 +821,18 @@ impl DebugInfo {
         let success = unsafe { BNAddDebugDataVariableInfo(self.handle, &raw_data_var) };
         NamedDataVariableWithType::free_raw(raw_data_var);
         success
+    }
+
+    /// Adds a source line scoped under the current parser's name to the debug info.
+    pub fn add_source_line(&self, source_line: &DebugSourceLineInfo) -> bool {
+        let source_file = source_line.source_file.clone().to_cstr();
+        let mut raw = BNDebugSourceLineInfo {
+            sourceFile: source_file.as_ptr() as *mut _,
+            address: source_line.address,
+            line: source_line.line,
+            column: source_line.column,
+        };
+        unsafe { BNAddDebugSourceLine(self.handle, &mut raw) }
     }
 }
 

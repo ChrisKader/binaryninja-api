@@ -20,7 +20,7 @@ use crate::{
 
 use binaryninja::{
     binary_view::{BinaryView, BinaryViewBase},
-    debuginfo::{DebugFunctionInfo, DebugInfo},
+    debuginfo::{DebugFunctionInfo, DebugInfo, DebugSourceLineInfo},
     platform::Platform,
     rc::*,
     symbol::SymbolType,
@@ -52,6 +52,14 @@ pub(crate) struct FunctionInfoBuilder {
     pub(crate) variable_arguments: bool,
     pub(crate) stack_variables: Vec<NamedVariableWithType>,
     pub(crate) frame_base: Option<FrameBase>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct SourceLineInfoBuilder {
+    pub(crate) source_file: String,
+    pub(crate) address: u64,
+    pub(crate) line: u32,
+    pub(crate) column: u32,
 }
 
 impl FunctionInfoBuilder {
@@ -217,6 +225,7 @@ pub(crate) struct DebugInfoBuilder {
     full_function_name_indices: HashMap<String, usize>,
     types: IndexMap<TypeUID, DebugType>,
     data_variables: HashMap<u64, (Option<String>, TypeUID)>,
+    source_lines: Vec<SourceLineInfoBuilder>,
     range_data_offsets: iset::IntervalMap<u64, i64>,
 }
 
@@ -228,6 +237,7 @@ impl DebugInfoBuilder {
             full_function_name_indices: HashMap::new(),
             types: IndexMap::new(),
             data_variables: HashMap::new(),
+            source_lines: vec![],
             range_data_offsets: iset::IntervalMap::new(),
         }
     }
@@ -356,6 +366,21 @@ impl DebugInfoBuilder {
 
     pub(crate) fn functions(&self) -> &[FunctionInfoBuilder] {
         &self.functions
+    }
+
+    pub(crate) fn insert_source_line(
+        &mut self,
+        source_file: String,
+        address: u64,
+        line: u32,
+        column: u32,
+    ) {
+        self.source_lines.push(SourceLineInfoBuilder {
+            source_file,
+            address,
+            line,
+            column,
+        });
     }
 
     #[allow(dead_code)]
@@ -706,6 +731,17 @@ impl DebugInfoBuilder {
         }
     }
 
+    fn commit_source_lines(&self, debug_info: &mut DebugInfo) {
+        for source_line in &self.source_lines {
+            debug_info.add_source_line(&DebugSourceLineInfo::new(
+                source_line.source_file.clone(),
+                source_line.address,
+                source_line.line,
+                source_line.column,
+            ));
+        }
+    }
+
     pub(crate) fn post_process(&mut self, bv: &BinaryView, _debug_info: &mut DebugInfo) -> &Self {
         //   When originally resolving names, we need to check:
         //     If there's already a name from binja that's "more correct" than what we found (has more namespaces)
@@ -762,6 +798,13 @@ impl DebugInfoBuilder {
             }
         }
 
+        let (diff, overflowed) = bv.start().overflowing_sub(bv.original_image_base());
+        if !overflowed {
+            for source_line in &mut self.source_lines {
+                source_line.address = source_line.address.overflowing_add(diff).0;
+            }
+        }
+
         self
     }
 
@@ -769,5 +812,6 @@ impl DebugInfoBuilder {
         self.commit_types(debug_info);
         self.commit_data_variables(debug_info);
         self.commit_functions(debug_info);
+        self.commit_source_lines(debug_info);
     }
 }

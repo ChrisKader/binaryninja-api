@@ -39,8 +39,8 @@ use dwarfreader::create_section_reader_object;
 
 use functions::parse_lexical_block;
 use gimli::{
-    constants, CfaRule, DebuggingInformationEntry, Dwarf, DwarfFileType, Reader, Section,
-    SectionId, Unit, UnwindContext, UnwindSection,
+    constants, CfaRule, ColumnType, DebuggingInformationEntry, Dwarf, DwarfFileType, Reader,
+    Section, SectionId, Unit, UnwindContext, UnwindSection,
 };
 
 use helpers::{get_build_id, load_debug_info_for_build_id};
@@ -539,6 +539,93 @@ fn parse_range_data_offsets(file: &object::File) -> Result<IntervalMap<u64, i64>
     }
 }
 
+fn join_path(prefix: Option<String>, path: String) -> String {
+    if path.starts_with('/') || path.contains(":\\") {
+        return path;
+    }
+
+    match prefix {
+        Some(prefix) if !prefix.is_empty() => {
+            format!("{}/{}", prefix.trim_end_matches('/'), path)
+        }
+        _ => path,
+    }
+}
+
+fn source_line_string<R: ReaderType>(
+    dwarf: &Dwarf<R>,
+    unit: &Unit<R>,
+    value: gimli::AttributeValue<R>,
+) -> Option<String> {
+    dwarf
+        .attr_string(unit, value)
+        .ok()
+        .and_then(|reader| reader.to_string().ok().map(|s| s.to_string()))
+}
+
+fn source_file_path<R: ReaderType>(
+    dwarf: &Dwarf<R>,
+    unit: &Unit<R>,
+    header: &gimli::LineProgramHeader<R>,
+    file: &gimli::FileEntry<R>,
+) -> Option<String> {
+    let file_name = source_line_string(dwarf, unit, file.path_name())?;
+    let comp_dir = unit
+        .comp_dir
+        .as_ref()
+        .and_then(|reader| reader.to_string().ok().map(|s| s.to_string()));
+
+    let directory = file
+        .directory(header)
+        .and_then(|directory| source_line_string(dwarf, unit, directory));
+    Some(join_path(directory.or(comp_dir), file_name))
+}
+
+fn parse_source_lines<R: ReaderType>(dwarf: &Dwarf<R>, debug_info_builder: &mut DebugInfoBuilder) {
+    let mut iter = dwarf.units();
+    while let Ok(Some(header)) = iter.next() {
+        let unit = match dwarf.unit(header) {
+            Ok(unit) => unit,
+            Err(e) => {
+                tracing::warn!("Failed to parse source lines for DWARF unit: {}", e);
+                continue;
+            }
+        };
+
+        let Some(ref program) = unit.line_program else {
+            continue;
+        };
+
+        let mut rows = program.clone().rows();
+        while let Ok(Some((header, row))) = rows.next_row() {
+            if row.end_sequence() {
+                continue;
+            }
+
+            let Some(line) = row.line() else {
+                continue;
+            };
+            let Ok(line) = u32::try_from(line.get()) else {
+                continue;
+            };
+
+            let column = match row.column() {
+                ColumnType::LeftEdge => 0,
+                ColumnType::Column(column) => u32::try_from(column.get()).unwrap_or(0),
+            };
+
+            let Some(file) = row.file(header) else {
+                continue;
+            };
+            let Some(source_file) = source_file_path(dwarf, &unit, header, file) else {
+                continue;
+            };
+
+            debug_info_builder.insert_source_line(source_file, row.address(), line, column);
+        }
+    }
+}
+
 fn parse_dwarf(
     bv: &BinaryView,
     debug_file: &object::File,
@@ -596,6 +683,10 @@ fn parse_dwarf(
     //   so we just do it up front
     let mut debug_info_builder = DebugInfoBuilder::new();
     debug_info_builder.set_range_data_offsets(range_data_offsets);
+    if let Some(sup_dwarf) = dwarf.sup() {
+        parse_source_lines(sup_dwarf, &mut debug_info_builder);
+    }
+    parse_source_lines(&dwarf, &mut debug_info_builder);
 
     if let Some(mut debug_info_builder_context) = DebugInfoBuilderContext::new(address_size, &dwarf)
     {
