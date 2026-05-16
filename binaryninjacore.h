@@ -864,6 +864,7 @@ extern "C"
 	RelativeToFunctionStartDisassemblyAddressMode,
 	RelativeToAddressBaseOffsetDisassemblyAddressMode,
 	RelativeToDataStartDisassemblyAddressMode,
+	SourceLineDisassemblyAddressMode,
 	DisassemblyAddressModeMask = 0xFFFF,
 
 		IncludeNameDisassemblyAddressModeFlag = 0x10000,
