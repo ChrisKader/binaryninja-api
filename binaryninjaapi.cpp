@@ -272,6 +272,36 @@ string BinaryNinja::GetSerialNumber()
 }
 
 
+string BinaryNinja::GetLicenseUserId()
+{
+	char* str = BNGetLicenseUserId();
+	string result = str;
+	BNFreeString(str);
+	return result;
+}
+
+
+string BinaryNinja::GetLicenseAddonsJson()
+{
+	char* str = BNGetLicenseAddonsJson();
+	string result = str;
+	BNFreeString(str);
+	return result;
+}
+
+
+vector<string> BinaryNinja::GetLicenseAddons()
+{
+	size_t count = 0;
+	char** addons = BNGetLicenseAddons(&count);
+	vector<string> result;
+	for (size_t i = 0; i < count; i++)
+		result.emplace_back(addons[i]);
+	BNFreeStringList(addons, count);
+	return result;
+}
+
+
 int BinaryNinja::GetLicenseCount()
 {
 	return BNGetLicenseCount();

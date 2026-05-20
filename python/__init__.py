@@ -21,9 +21,10 @@
 import atexit
 import sys
 import ctypes
+import json
 from time import gmtime, struct_time
 import os
-from typing import Mapping, Optional
+from typing import Any, List, Mapping, Optional
 import functools
 
 # Binary Ninja components
@@ -371,6 +372,36 @@ def core_license_count() -> int:
 	'''License count from the license file'''
 	_init_plugins()
 	return core.BNGetLicenseCount()
+
+
+def core_license_addons() -> List[str]:
+	'''License addons from the license file'''
+	_init_plugins()
+	count = ctypes.c_ulonglong()
+	addons = core.BNGetLicenseAddons(ctypes.byref(count))
+	if not addons:
+		return []
+	result = [core.pyNativeStr(addons[i]) for i in range(count.value)]
+	core.BNFreeStringList(addons, count.value)
+	return result
+
+
+def core_license_addons_json() -> str:
+	'''Structured license addons JSON from the license file'''
+	_init_plugins()
+	return core.BNGetLicenseAddonsJson()
+
+
+def core_license_addon_data() -> List[Mapping[str, Any]]:
+	'''Structured license addons from the license file'''
+	return json.loads(core_license_addons_json())
+
+
+def core_license_user_id() -> Optional[int]:
+	'''License user id from the license file'''
+	_init_plugins()
+	uid = core.BNGetLicenseUserId()
+	return int(uid) if uid else None
 
 
 def core_ui_enabled() -> bool:

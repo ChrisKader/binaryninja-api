@@ -4072,6 +4072,9 @@ extern "C"
 	BINARYNINJACOREAPI char* BNGetLicensedUserEmail(void);
 	BINARYNINJACOREAPI char* BNGetProduct(void);
 	BINARYNINJACOREAPI char* BNGetProductType(void);
+	BINARYNINJACOREAPI char* BNGetLicenseUserId(void);
+	BINARYNINJACOREAPI char* BNGetLicenseAddonsJson(void);
+	BINARYNINJACOREAPI char** BNGetLicenseAddons(size_t* count);
 	BINARYNINJACOREAPI int BNGetLicenseCount(void);
 	BINARYNINJACOREAPI bool BNIsUIEnabled(void);
 	BINARYNINJACOREAPI void BNSetLicense(const char* licenseData);

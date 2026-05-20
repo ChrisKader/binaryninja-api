@@ -2027,6 +2027,9 @@ namespace BinaryNinja {
 	std::string GetProduct();
 	std::string GetProductType();
 	std::string GetSerialNumber();
+	std::string GetLicenseUserId();
+	std::string GetLicenseAddonsJson();
+	std::vector<std::string> GetLicenseAddons();
 	int GetLicenseCount();
 	bool IsUIEnabled();
 	uint32_t GetBuildId();

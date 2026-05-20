@@ -540,6 +540,34 @@ pub fn license_count() -> i32 {
     unsafe { BNGetLicenseCount() }
 }
 
+pub fn license_addons() -> Vec<String> {
+    let mut count = 0;
+    let addons = unsafe { BNGetLicenseAddons(&mut count) };
+    if addons.is_null() {
+        return Vec::new();
+    }
+
+    let result = unsafe { std::slice::from_raw_parts(addons, count) }
+        .iter()
+        .map(|addon| unsafe { CStr::from_ptr(*addon).to_string_lossy().into_owned() })
+        .collect();
+    unsafe { BNFreeStringList(addons, count) };
+    result
+}
+
+pub fn license_addons_json() -> String {
+    unsafe { BnString::into_string(BNGetLicenseAddonsJson()) }
+}
+
+pub fn license_user_id() -> Option<String> {
+    let uid = unsafe { BnString::into_string(BNGetLicenseUserId()) };
+    if uid.is_empty() {
+        None
+    } else {
+        Some(uid)
+    }
+}
+
 /// Set the license that will be used once the core initializes. You can reset the license by passing `None`.
 ///
 /// If not set, the normal license retrieval will occur:
