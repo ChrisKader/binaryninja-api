@@ -86,6 +86,21 @@ static Ref<Enumeration> get_msr_op_enum()
 	return _enum;
 }
 
+static Ref<Enumeration> GetVfpStatusRegisterEnum()
+{
+	EnumerationBuilder builder;
+	builder.AddMemberWithValue("fpsid", REGS_FPSID);
+	builder.AddMemberWithValue("fpscr", REGS_FPSCR);
+	builder.AddMemberWithValue("mvfr2", REGS_MVFR2);
+	builder.AddMemberWithValue("mvfr1", REGS_MVFR1);
+	builder.AddMemberWithValue("mvfr0", REGS_MVFR0);
+	builder.AddMemberWithValue("fpexc", REGS_FPEXC);
+	builder.AddMemberWithValue("fpinst", REGS_FPINST);
+	builder.AddMemberWithValue("fpinst2", REGS_FPINST2);
+	Ref<Enumeration> _enum = builder.Finalize();
+	return _enum;
+}
+
 /* class Architecture from binaryninjaapi.h */
 class Thumb2Architecture: public ArmCommonArchitecture
 {
@@ -1640,6 +1655,8 @@ public:
 			return "__mrs";
 		case ARMV7_INTRIN_MSR:
 			return "__msr";
+		case ARMV7_INTRIN_VMRS:
+			return "__vmrs";
 		case ARMV7_INTRIN_SEV:
 			return "__sev";
 		case ARMV7_INTRIN_WFE:
@@ -1684,6 +1701,7 @@ public:
 			ARMV7_INTRIN_ISB,
 			ARMV7_INTRIN_MRS,
 			ARMV7_INTRIN_MSR,
+			ARMV7_INTRIN_VMRS,
 			ARMV7_INTRIN_SEV,
 			ARMV7_INTRIN_WFE,
 			ARMV7_INTRIN_WFI,
@@ -1736,6 +1754,10 @@ public:
 				NameAndType("msr", Confidence<Ref<Type>>(Type::EnumerationType(this, get_msr_op_enum(), 4, false), BN_FULL_CONFIDENCE)),
 				NameAndType(Type::IntegerType(4, false))
 			};
+		case ARMV7_INTRIN_VMRS:
+			return {
+				NameAndType("status_register", Confidence<Ref<Type>>(Type::EnumerationType(this, GetVfpStatusRegisterEnum(), 4, false), BN_FULL_CONFIDENCE)),
+			};
 		case ARMV7_INTRIN_DBG:
 			return {NameAndType(Type::IntegerType(1, false))};
 		default:
@@ -1752,6 +1774,7 @@ public:
 		case ARMV7_INTRIN_COPROC_GETTWOWORDS:
 			return { Type::IntegerType(4, false), Type::IntegerType(4, false) };
 		case ARMV7_INTRIN_MRS:
+		case ARMV7_INTRIN_VMRS:
 			return {Type::IntegerType(4, false)};
 		case ARMV7_INTRIN_MSR:
 			// return {Type::IntegerType(4, false)};

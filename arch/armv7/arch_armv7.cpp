@@ -30,6 +30,75 @@ using namespace std;
 
 #define HANDLE_CASE(orig, opposite) case orig: case opposite: return (candidate == orig) || (candidate == opposite)
 
+static Ref<Enumeration> GetMrsOpEnum()
+{
+	EnumerationBuilder builder;
+	builder.AddMemberWithValue("apsr", REGS_APSR);
+	builder.AddMemberWithValue("cpsr", REGS_CPSR);
+	builder.AddMemberWithValue("spsr", REGS_SPSR);
+	Ref<Enumeration> _enum = builder.Finalize();
+	return _enum;
+}
+
+static Ref<Enumeration> GetMsrOpEnum()
+{
+	EnumerationBuilder builder;
+	builder.AddMemberWithValue("apsr", REGS_APSR);
+	builder.AddMemberWithValue("apsr_g", REGS_APSR_G);
+	builder.AddMemberWithValue("apsr_nzcvq", REGS_APSR_NZCVQ);
+	builder.AddMemberWithValue("apsr_nzcvqg", REGS_APSR_NZCVQG);
+	builder.AddMemberWithValue("cpsr", REGS_CPSR);
+	builder.AddMemberWithValue("cpsr_c", REGS_CPSR_C);
+	builder.AddMemberWithValue("cpsr_x", REGS_CPSR_X);
+	builder.AddMemberWithValue("cpsr_xc", REGS_CPSR_XC);
+	builder.AddMemberWithValue("cpsr_s", REGS_CPSR_S);
+	builder.AddMemberWithValue("cpsr_sc", REGS_CPSR_SC);
+	builder.AddMemberWithValue("cpsr_sx", REGS_CPSR_SX);
+	builder.AddMemberWithValue("cpsr_sxc", REGS_CPSR_SXC);
+	builder.AddMemberWithValue("cpsr_f", REGS_CPSR_F);
+	builder.AddMemberWithValue("cpsr_fc", REGS_CPSR_FC);
+	builder.AddMemberWithValue("cpsr_fx", REGS_CPSR_FX);
+	builder.AddMemberWithValue("cpsr_fxc", REGS_CPSR_FXC);
+	builder.AddMemberWithValue("cpsr_fs", REGS_CPSR_FS);
+	builder.AddMemberWithValue("cpsr_fsc", REGS_CPSR_FSC);
+	builder.AddMemberWithValue("cpsr_fsx", REGS_CPSR_FSX);
+	builder.AddMemberWithValue("cpsr_fsxc", REGS_CPSR_FSXC);
+	builder.AddMemberWithValue("spsr", REGS_SPSR);
+	builder.AddMemberWithValue("spsr_c", REGS_SPSR_C);
+	builder.AddMemberWithValue("spsr_x", REGS_SPSR_X);
+	builder.AddMemberWithValue("spsr_xc", REGS_SPSR_XC);
+	builder.AddMemberWithValue("spsr_s", REGS_SPSR_S);
+	builder.AddMemberWithValue("spsr_sc", REGS_SPSR_SC);
+	builder.AddMemberWithValue("spsr_sx", REGS_SPSR_SX);
+	builder.AddMemberWithValue("spsr_sxc", REGS_SPSR_SXC);
+	builder.AddMemberWithValue("spsr_f", REGS_SPSR_F);
+	builder.AddMemberWithValue("spsr_fc", REGS_SPSR_FC);
+	builder.AddMemberWithValue("spsr_fx", REGS_SPSR_FX);
+	builder.AddMemberWithValue("spsr_fxc", REGS_SPSR_FXC);
+	builder.AddMemberWithValue("spsr_fs", REGS_SPSR_FS);
+	builder.AddMemberWithValue("spsr_fsc", REGS_SPSR_FSC);
+	builder.AddMemberWithValue("spsr_fsx", REGS_SPSR_FSX);
+	builder.AddMemberWithValue("spsr_fsxc", REGS_SPSR_FSXC);
+	builder.AddMemberWithValue("apsr_nzcv", REGS_APSR_NZCV);
+	Ref<Enumeration> _enum = builder.Finalize();
+	return _enum;
+}
+
+static Ref<Enumeration> GetVfpStatusRegisterEnum()
+{
+	EnumerationBuilder builder;
+	builder.AddMemberWithValue("fpsid", REGS_FPSID);
+	builder.AddMemberWithValue("fpscr", REGS_FPSCR);
+	builder.AddMemberWithValue("mvfr2", REGS_MVFR2);
+	builder.AddMemberWithValue("mvfr1", REGS_MVFR1);
+	builder.AddMemberWithValue("mvfr0", REGS_MVFR0);
+	builder.AddMemberWithValue("fpexc", REGS_FPEXC);
+	builder.AddMemberWithValue("fpinst", REGS_FPINST);
+	builder.AddMemberWithValue("fpinst2", REGS_FPINST2);
+	Ref<Enumeration> _enum = builder.Finalize();
+	return _enum;
+}
+
 static bool IsRelatedCondition(Condition orig, Condition candidate)
 {
 	switch (orig)
@@ -1411,6 +1480,14 @@ public:
 			return "ExclusiveMonitorsPass";
 		case ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS:
 			return "SetExclusiveMonitors";
+		case ARMV7_INTRIN_MRS:
+			return "__mrs";
+		case ARMV7_INTRIN_MSR:
+			return "__msr";
+		case ARMV7_INTRIN_VMRS:
+			return "__vmrs";
+		case ARMV7_INTRIN_VMSR:
+			return "__vmsr";
 		default:
 			return "";
 		}
@@ -1425,6 +1502,10 @@ public:
 				ARMV7_INTRIN_COPROC_SENDTWOWORDS,
 				ARMV7_INTRIN_EXCLUSIVE_MONITORS_PASS,
 				ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS,
+				ARMV7_INTRIN_MRS,
+				ARMV7_INTRIN_MSR,
+				ARMV7_INTRIN_VMRS,
+				ARMV7_INTRIN_VMSR,
 		};
 	}
 
@@ -1469,6 +1550,24 @@ public:
 				NameAndType("address", Type::PointerType(4, Confidence(Type::VoidType(), 0), Confidence(false), Confidence(false), PointerReferenceType)),
 				NameAndType("size", Type::IntegerType(1, false)),
 			};
+		case ARMV7_INTRIN_MRS:
+			return {
+				NameAndType("status_register", Confidence<Ref<Type>>(Type::EnumerationType(this, GetMrsOpEnum(), 4, false), BN_FULL_CONFIDENCE)),
+			};
+		case ARMV7_INTRIN_MSR:
+			return {
+				NameAndType("status_register", Confidence<Ref<Type>>(Type::EnumerationType(this, GetMsrOpEnum(), 4, false), BN_FULL_CONFIDENCE)),
+				NameAndType("source_register", Type::IntegerType(4, false)),
+			};
+		case ARMV7_INTRIN_VMRS:
+			return {
+				NameAndType("status_register", Confidence<Ref<Type>>(Type::EnumerationType(this, GetVfpStatusRegisterEnum(), 4, false), BN_FULL_CONFIDENCE)),
+			};
+		case ARMV7_INTRIN_VMSR:
+			return {
+				NameAndType("status_register", Confidence<Ref<Type>>(Type::EnumerationType(this, GetVfpStatusRegisterEnum(), 4, false), BN_FULL_CONFIDENCE)),
+				NameAndType("source_register", Type::IntegerType(4, false)),
+			};
 		default:
 			return vector<NameAndType>();
 		}
@@ -1484,6 +1583,9 @@ public:
 			return { Type::IntegerType(4, false), Type::IntegerType(4, false) };
 		case ARMV7_INTRIN_EXCLUSIVE_MONITORS_PASS:
 			return { Type::BoolType() };
+		case ARMV7_INTRIN_MRS:
+		case ARMV7_INTRIN_VMRS:
+			return { Type::IntegerType(4, false) };
 		default:
 			return vector<Confidence<Ref<Type>>>();
 		}

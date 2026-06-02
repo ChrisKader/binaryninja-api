@@ -1168,6 +1168,89 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 				)
 			);
 			break;
+		case ARMV7_MRS:
+			if (op2.cls != REG_SPEC)
+			{
+				il.AddInstruction(il.Unimplemented());
+				break;
+			}
+			ConditionExecute(il, instr.cond,
+				il.Intrinsic(
+					{ RegisterOrFlag::Register(op1.reg) },
+					ARMV7_INTRIN_MRS,
+					{ il.Const(4, op2.regs) }
+				)
+			);
+			break;
+		case ARMV7_MSR:
+			if ((op1.cls != REG_SPEC) || (op2.cls != REG))
+			{
+				il.AddInstruction(il.Unimplemented());
+				break;
+			}
+			ConditionExecute(il, instr.cond,
+				il.Intrinsic(
+					{},
+					ARMV7_INTRIN_MSR,
+					{ il.Const(4, op1.regs), il.Register(get_register_size(op2.reg), op2.reg) }
+				)
+			);
+			break;
+		case ARMV7_VMSR:
+			if ((op1.cls != REG_SPEC) || (op2.cls != REG))
+			{
+				il.AddInstruction(il.Unimplemented());
+				break;
+			}
+			ConditionExecute(il, instr.cond,
+				il.Intrinsic(
+					{},
+					ARMV7_INTRIN_VMSR,
+					{ il.Const(4, op1.regs), il.Register(get_register_size(op2.reg), op2.reg) }
+				)
+			);
+			break;
+		case ARMV7_VMRS:
+			if (op2.cls != REG_SPEC)
+			{
+				il.AddInstruction(il.Unimplemented());
+				break;
+			}
+			if (op1.cls == REG_SPEC)
+			{
+				if (op1.regs != REGS_APSR_NZCV)
+				{
+					il.AddInstruction(il.Unimplemented());
+					break;
+				}
+				ConditionExecute(addrSize, instr.cond, instr, il,
+					[&](size_t, Instruction&, LowLevelILFunction& il)
+					{
+						il.AddInstruction(il.Intrinsic(
+							{ RegisterOrFlag::Register(LLIL_TEMP(0)) },
+							ARMV7_INTRIN_VMRS,
+							{ il.Const(4, op2.regs) }
+						));
+						il.AddInstruction(il.SetFlag(IL_FLAG_N, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 31))));
+						il.AddInstruction(il.SetFlag(IL_FLAG_Z, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 30))));
+						il.AddInstruction(il.SetFlag(IL_FLAG_C, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 29))));
+						il.AddInstruction(il.SetFlag(IL_FLAG_V, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 28))));
+					});
+				break;
+			}
+			if (op1.cls != REG)
+			{
+				il.AddInstruction(il.Unimplemented());
+				break;
+			}
+			ConditionExecute(il, instr.cond,
+				il.Intrinsic(
+					{ RegisterOrFlag::Register(op1.reg) },
+					ARMV7_INTRIN_VMRS,
+					{ il.Const(4, op2.regs) }
+				)
+			);
+			break;
 		case ARMV7_MUL:
 			ConditionExecute(il, instr.cond, SetRegisterOrBranch(il, op1.reg,
 				il.Mult(get_register_size(op2.reg),

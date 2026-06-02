@@ -41,6 +41,26 @@ test_cases = \
     ('A', b'\x02\x00\x32\xe3', 'LLIL_XOR.d{cnz}(LLIL_REG.d(r2),LLIL_CONST.d(0x2))'),
     # teq r3, #3
     ('A', b'\x03\x00\x33\xe3', 'LLIL_XOR.d{cnz}(LLIL_REG.d(r3),LLIL_CONST.d(0x3))'),
+    # mrs lr, spsr
+    ('A', b'\x00\xe0\x4f\xe1', 'LLIL_INTRINSIC([lr],__mrs,[LLIL_CONST.d(0x91)])'),
+    # mrs r0, apsr
+    ('A', b'\x00\x00\x0f\xe1', 'LLIL_INTRINSIC([r0],__mrs,[LLIL_CONST.d(0x7D)])'),
+    # mrs r9, apsr
+    ('A', b'\x00\x90\x0f\xe1', 'LLIL_INTRINSIC([r9],__mrs,[LLIL_CONST.d(0x7D)])'),
+    # msr cpsr_c, r9
+    ('A', b'\x09\xf0\x21\xe1', 'LLIL_INTRINSIC([],__msr,[LLIL_CONST.d(0x82),LLIL_REG.d(r9)])'),
+    # msr cpsr_fc, r0
+    ('A', b'\x00\xf0\x29\xe1', 'LLIL_INTRINSIC([],__msr,[LLIL_CONST.d(0x8A),LLIL_REG.d(r0)])'),
+    # msr spsr_fc, sp
+    ('A', b'\x0d\xf0\x69\xe1', 'LLIL_INTRINSIC([],__msr,[LLIL_CONST.d(0x9A),LLIL_REG.d(sp)])'),
+    # vmsr fpexc, r1
+    ('A', b'\x10\x1a\xe8\xee', 'LLIL_INTRINSIC([],__vmsr,[LLIL_CONST.d(0xA7),LLIL_REG.d(r1)])'),
+    # vmrs r1, fpexc
+    ('A', b'\x10\x1a\xf8\xee', 'LLIL_INTRINSIC([r1],__vmrs,[LLIL_CONST.d(0xA7)])'),
+    # vmrs apsr_nzcv, fpscr
+    ('A', b'\x10\xfa\xf1\xee', 'LLIL_INTRINSIC([temp0],__vmrs,[LLIL_CONST.d(0xA3)]); LLIL_SET_FLAG(n,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1F))); LLIL_SET_FLAG(z,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1E))); LLIL_SET_FLAG(c,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1D))); LLIL_SET_FLAG(v,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1C)))'),
+    # vmrs apsr_nzcv, fpscr (Thumb2)
+    ('T', b'\xf1\xee\x10\xfa', 'LLIL_INTRINSIC([temp0],__vmrs,[LLIL_CONST.d(0xA3)]); LLIL_SET_FLAG(n,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1F))); LLIL_SET_FLAG(z,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1E))); LLIL_SET_FLAG(c,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1D))); LLIL_SET_FLAG(v,LLIL_TEST_BIT.d(LLIL_REG.d(temp0),LLIL_CONST.b(0x1C)))'),
 
     # sxth    r0, r1, ror  #0
     ('A', b'\x71\x00\xbf\xe6', 'LLIL_SET_REG.d(r0,LLIL_SX.d(LLIL_LOW_PART.w(LLIL_REG.d(r1))))'),

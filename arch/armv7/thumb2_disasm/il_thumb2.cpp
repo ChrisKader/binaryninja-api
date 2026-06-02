@@ -133,6 +133,34 @@ static int GetSpecialRegister(LowLevelILFunction& il, decomp_result* instr, size
 	return REG_INVALID;
 }
 
+static int GetVfpStatusRegister(decomp_result* instr, size_t operand)
+{
+	if (instr->format->operands[operand].type != OPERAND_FORMAT_FPSCR)
+		return REG_INVALID;
+
+	switch (instr->fields[FIELD_FPSCR])
+	{
+	case 0:
+		return REGS_FPSID;
+	case 1:
+		return REGS_FPSCR;
+	case 5:
+		return REGS_MVFR2;
+	case 6:
+		return REGS_MVFR1;
+	case 7:
+		return REGS_MVFR0;
+	case 8:
+		return REGS_FPEXC;
+	case 9:
+		return REGS_FPINST;
+	case 10:
+		return REGS_FPINST2;
+	default:
+		return REG_INVALID;
+	}
+}
+
 static ExprId ReadILOperand(LowLevelILFunction& il, decomp_result* instr, size_t operand, size_t size = 4)
 {
 	uint32_t value;
@@ -1817,9 +1845,41 @@ bool GetLowLevelILForNEONInstruction(Architecture* arch, LowLevelILFunction& il,
 		}
 		break;
 	case armv7::ARMV7_VMRS:
-		// TODO: If this sets the apsr register we do not track that in the core flag group.
-		il.AddInstruction(WriteILOperand(il, instr, 0, ReadILOperand(il, instr, 1), GetRegisterSize(instr, 1)));
+	{
+		int status_reg = GetVfpStatusRegister(instr, 1);
+		if (status_reg == REG_INVALID)
+		{
+			il.AddInstruction(il.Unimplemented());
+			break;
+		}
+
+		if ((instr->format->operands[0].type == OPERAND_FORMAT_RT_MRC) && (instr->fields[FIELD_Rt_mrc] == 15))
+		{
+			il.AddInstruction(il.Intrinsic(
+				{ RegisterOrFlag::Register(LLIL_TEMP(0)) },
+				ARMV7_INTRIN_VMRS,
+				{ il.Const(4, status_reg) }
+			));
+			il.AddInstruction(il.SetFlag(IL_FLAG_N, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 31))));
+			il.AddInstruction(il.SetFlag(IL_FLAG_Z, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 30))));
+			il.AddInstruction(il.SetFlag(IL_FLAG_C, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 29))));
+			il.AddInstruction(il.SetFlag(IL_FLAG_V, il.TestBit(4, il.Register(4, LLIL_TEMP(0)), il.Const(1, 28))));
+			break;
+		}
+
+		uint32_t dest_reg = GetRegisterOperand(instr, 0);
+		if (dest_reg == REG_INVALID)
+		{
+			il.AddInstruction(il.Unimplemented());
+			break;
+		}
+		il.AddInstruction(il.Intrinsic(
+			{ RegisterOrFlag::Register(dest_reg) },
+			ARMV7_INTRIN_VMRS,
+			{ il.Const(4, status_reg) }
+		));
 		break;
+	}
 	case armv7::ARMV7_VCVT:
 		if (IS_FIELD_PRESENT(instr, FIELD_to_fixed))
 		{
