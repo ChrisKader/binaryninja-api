@@ -217,6 +217,106 @@ static uint32_t GetRegisterSize(decomp_result* instr, size_t operand)
 	return RegisterSizeFromPrefix(instr->format->operands[operand].prefix);
 }
 
+static ExprId ReadFloatOperand(LowLevelILFunction& il, decomp_result* instr, size_t operand, size_t size)
+{
+	const instruction_operand_format& op = instr->format->operands[operand];
+	switch (op.type)
+	{
+	case OPERAND_FORMAT_REG_FP:
+		return il.Register(size, GetRegisterByIndex(instr->fields[op.field0], op.prefix));
+	case OPERAND_FORMAT_ZERO:
+		return il.FloatConstRaw(size, 0);
+	default:
+		return ReadILOperand(il, instr, operand, size);
+	}
+}
+
+static void FloatCompare(LowLevelILFunction& il, decomp_result* instr)
+{
+	size_t size = GetRegisterSize(instr, 0);
+	ExprId lhs = ReadFloatOperand(il, instr, 0, size);
+	ExprId rhs = ReadFloatOperand(il, instr, 1, size);
+
+	il.AddInstruction(il.SetFlag(IL_FLAG_N, il.FloatCompareLessThan(size, lhs, rhs)));
+	il.AddInstruction(il.SetFlag(IL_FLAG_Z, il.FloatCompareEqual(size, lhs, rhs)));
+	il.AddInstruction(il.SetFlag(IL_FLAG_C, il.Not(1, il.FloatCompareLessThan(size, lhs, rhs))));
+	il.AddInstruction(il.SetFlag(IL_FLAG_V, il.FloatCompareUnordered(size, lhs, rhs)));
+}
+
+static bool IsSignedVectorElement(decomp_result* instr)
+{
+	return IS_FIELD_PRESENT(instr, FIELD_unsigned) && (instr->fields[FIELD_unsigned] == 0);
+}
+
+static ExprId ReadVectorElement(LowLevelILFunction& il, decomp_result* instr, size_t operand, size_t outputSize)
+{
+	const instruction_operand_format& op = instr->format->operands[operand];
+	size_t elementSize = instr->fields[FIELD_esize] / 8;
+	size_t regSize = RegisterSizeFromPrefix(op.prefix);
+	size_t shift = instr->fields[op.field1] * elementSize * 8;
+	uint32_t reg = GetRegisterByIndex(instr->fields[op.field0], op.prefix);
+
+	ExprId value = il.Register(regSize, reg);
+	if (shift != 0)
+		value = il.LogicalShiftRight(regSize, value, il.Const(1, shift));
+	if (elementSize < regSize)
+		value = il.LowPart(elementSize, value);
+	if (outputSize > elementSize)
+		return IsSignedVectorElement(instr) ? il.SignExtend(outputSize, value) : il.ZeroExtend(outputSize, value);
+	return value;
+}
+
+static ExprId InsertVectorElement(LowLevelILFunction& il, decomp_result* instr, size_t operand, ExprId src, size_t srcSize)
+{
+	const instruction_operand_format& op = instr->format->operands[operand];
+	size_t elementSize = instr->fields[FIELD_esize] / 8;
+	size_t regSize = RegisterSizeFromPrefix(op.prefix);
+	size_t shift = instr->fields[op.field1] * elementSize * 8;
+	size_t elementBits = elementSize * 8;
+	uint64_t elementMask = (elementBits == 64) ? UINT64_MAX : ((1ULL << elementBits) - 1);
+	uint64_t shiftedMask = elementMask << shift;
+	uint32_t reg = GetRegisterByIndex(instr->fields[op.field0], op.prefix);
+
+	ExprId value = src;
+	if (srcSize > elementSize)
+		value = il.LowPart(elementSize, value);
+	if (regSize > elementSize)
+		value = il.ZeroExtend(regSize, value);
+	if (shift != 0)
+		value = il.ShiftLeft(regSize, value, il.Const(1, shift));
+
+	return il.Or(regSize,
+		il.And(regSize, il.Register(regSize, reg), il.Const(regSize, ~shiftedMask)),
+		value);
+}
+
+static ExprId ReadVst1Element(LowLevelILFunction& il, uint32_t reg, size_t elementSize, size_t index)
+{
+	size_t shift = index * elementSize * 8;
+	ExprId value = il.Register(8, reg);
+	if (shift != 0)
+		value = il.LogicalShiftRight(8, value, il.Const(1, shift));
+	return il.LowPart(elementSize, value);
+}
+
+static ExprId InsertVld1Element(LowLevelILFunction& il, uint32_t reg, ExprId src, size_t elementSize, size_t index)
+{
+	size_t shift = index * elementSize * 8;
+	size_t elementBits = elementSize * 8;
+	uint64_t elementMask = (elementBits == 64) ? UINT64_MAX : ((1ULL << elementBits) - 1);
+	uint64_t shiftedMask = elementMask << shift;
+
+	ExprId value = src;
+	if (elementSize < 8)
+		value = il.ZeroExtend(8, value);
+	if (shift != 0)
+		value = il.ShiftLeft(8, value, il.Const(1, shift));
+
+	return il.Or(8,
+		il.And(8, il.Register(8, reg), il.Const(8, ~shiftedMask)),
+		value);
+}
+
 static ExprId ReadShiftedOperand(LowLevelILFunction& il, decomp_result* instr, size_t operand, size_t size = 4)
 {
 	uint32_t shift_t = instr->fields[FIELD_shift_t];
@@ -386,6 +486,7 @@ static ExprId GetMemoryAddress(LowLevelILFunction& il, decomp_result* instr, siz
 	uint32_t reg, second, t, n;
 	switch (instr->format->operands[operand].type)
 	{
+	case OPERAND_FORMAT_MEMORY_ONE_REG_ALIGNED:
 	case OPERAND_FORMAT_MEMORY_ONE_REG:
 		reg = GetRegisterByIndex(instr->fields[instr->format->operands[operand].field0]);
 		return il.Register(4, reg);
@@ -1811,6 +1912,33 @@ bool GetLowLevelILForNEONInstruction(Architecture* arch, LowLevelILFunction& il,
 			il.AddInstruction(il.Unimplemented());
 		}
 		break;
+	case armv7::ARMV7_VMLA:
+	case armv7::ARMV7_VMLS:
+		if (instr->format->operationFlags & (INSTR_FORMAT_FLAG_F32 | INSTR_FORMAT_FLAG_F64))
+		{
+			size_t size = GetRegisterSize(instr, 0);
+			ExprId product = il.FloatMult(size, ReadILOperand(il, instr, 1), ReadILOperand(il, instr, 2));
+			if (strncmp(instr->format->operation, "vmla", 4) == 0)
+			{
+				il.AddInstruction(WriteArithOperand(il, instr,
+					il.FloatAdd(size, ReadILOperand(il, instr, 0), product)));
+			}
+			else if (strncmp(instr->format->operation, "vmls", 4) == 0)
+			{
+				il.AddInstruction(WriteArithOperand(il, instr,
+					il.FloatSub(size, ReadILOperand(il, instr, 0), product)));
+			}
+			else
+			{
+				il.AddInstruction(il.Unimplemented());
+			}
+		}
+		else
+		{
+			// Non scalar unsupported.
+			il.AddInstruction(il.Unimplemented());
+		}
+		break;
 	case armv7::ARMV7_VMUL:
 		if (instr->format->operationFlags & (INSTR_FORMAT_FLAG_F32 | INSTR_FORMAT_FLAG_F64))
 		{
@@ -1822,6 +1950,9 @@ bool GetLowLevelILForNEONInstruction(Architecture* arch, LowLevelILFunction& il,
 			// Non scalar unsupported.
 			il.AddInstruction(il.Unimplemented());
 		}
+		break;
+	case armv7::ARMV7_VCMP:
+		FloatCompare(il, instr);
 		break;
 	case armv7::ARMV7_VDIV:
 		if (instr->format->operationFlags & (INSTR_FORMAT_FLAG_F32 | INSTR_FORMAT_FLAG_F64))
@@ -2041,7 +2172,20 @@ bool GetLowLevelILForNEONInstruction(Architecture* arch, LowLevelILFunction& il,
 		}
 		else /* if (instr->format->operandCount == 2) */
 		{
-			if (instr->format->operands[1].type == OPERAND_FORMAT_IMM64 && strcmp(instr->format->operands[0].prefix, "q") == 0)
+			if (instr->format->operands[0].type == OPERAND_FORMAT_REG_INDEX)
+			{
+				const instruction_operand_format& op = instr->format->operands[0];
+				size_t regSize = RegisterSizeFromPrefix(op.prefix);
+				uint32_t reg = GetRegisterByIndex(instr->fields[op.field0], op.prefix);
+				il.AddInstruction(il.SetRegister(regSize, reg,
+					InsertVectorElement(il, instr, 0, ReadILOperand(il, instr, 1), GetRegisterSize(instr, 1))));
+			}
+			else if (instr->format->operands[1].type == OPERAND_FORMAT_REG_INDEX)
+			{
+				il.AddInstruction(WriteILOperand(il, instr, 0,
+					ReadVectorElement(il, instr, 1, GetRegisterSize(instr, 0))));
+			}
+			else if (instr->format->operands[1].type == OPERAND_FORMAT_IMM64 && strcmp(instr->format->operands[0].prefix, "q") == 0)
 				// Load immediate in high and low
 				il.AddInstruction(WriteILOperand(il, instr, 0,
 					il.Or(16, ReadILOperand(il, instr, 1),
@@ -2097,6 +2241,135 @@ bool GetLowLevelILForNEONInstruction(Architecture* arch, LowLevelILFunction& il,
 			int regIdx = (d + i * inc) % 32;
 			il.Store(regSize, il.Add(4, ReadILOperand(il, instr, 0), il.Const(4, i * regSize)),
 				il.Register(regSize, GetRegisterByIndex(regIdx, prefix)));
+		}
+		break;
+	}
+	case armv7::ARMV7_VST1:
+	{
+		ExprId base = GetMemoryAddress(il, instr, 1, 4, false);
+		size_t totalSize = 0;
+
+		if (instr->format->operands[0].type == OPERAND_FORMAT_REGISTERS)
+		{
+			unsigned int d = instr->fields[FIELD_d];
+			unsigned int inc = 1;
+			if (IS_FIELD_PRESENT(instr, FIELD_inc))
+				inc = instr->fields[FIELD_inc];
+			int regs = instr->fields[FIELD_regs];
+			for (int i = 0; i < regs; ++i)
+			{
+				int regIdx = (d + i * inc) % 32;
+				size_t offset = i * 8;
+				il.AddInstruction(il.Store(8,
+					offset == 0 ? base : il.Add(4, base, il.Const(4, offset)),
+					il.Register(8, GetRegisterByIndex(regIdx, "d"))));
+			}
+			totalSize = regs * 8;
+		}
+		else if (instr->format->operands[0].type == OPERAND_FORMAT_REGISTERS_INDEXED)
+		{
+			size_t elementSize = instr->fields[FIELD_ebytes];
+			unsigned int d = instr->fields[FIELD_d];
+			unsigned int inc = 1;
+			if (IS_FIELD_PRESENT(instr, FIELD_inc))
+				inc = instr->fields[FIELD_inc];
+			unsigned int index = instr->fields[FIELD_index];
+			int length = instr->fields[FIELD_length];
+			for (int i = 0; i < length; ++i)
+			{
+				int regIdx = (d + i * inc) % 32;
+				size_t offset = i * elementSize;
+				il.AddInstruction(il.Store(elementSize,
+					offset == 0 ? base : il.Add(4, base, il.Const(4, offset)),
+					ReadVst1Element(il, GetRegisterByIndex(regIdx, "d"), elementSize, index)));
+			}
+			totalSize = length * elementSize;
+		}
+		else
+		{
+			il.AddInstruction(il.Unimplemented());
+			break;
+		}
+
+		if (HasWriteback(instr, 1))
+		{
+			uint32_t baseReg = GetRegisterByIndex(instr->fields[instr->format->operands[1].field0]);
+			if (IS_FIELD_PRESENT(instr, FIELD_register_index) && instr->fields[FIELD_register_index])
+			{
+				uint32_t indexReg = GetRegisterByIndex(instr->fields[FIELD_m]);
+				il.AddInstruction(il.SetRegister(4, baseReg,
+					il.Add(4, il.Register(4, baseReg), il.Register(4, indexReg))));
+			}
+			else
+			{
+				il.AddInstruction(il.SetRegister(4, baseReg,
+					il.Add(4, il.Register(4, baseReg), il.Const(4, totalSize))));
+			}
+		}
+		break;
+	}
+	case armv7::ARMV7_VLD1:
+	{
+		ExprId base = GetMemoryAddress(il, instr, 1, 4, false);
+		size_t totalSize = 0;
+
+		if (instr->format->operands[0].type == OPERAND_FORMAT_REGISTERS)
+		{
+			unsigned int d = instr->fields[FIELD_d];
+			unsigned int inc = 1;
+			if (IS_FIELD_PRESENT(instr, FIELD_inc))
+				inc = instr->fields[FIELD_inc];
+			int regs = IS_FIELD_PRESENT(instr, FIELD_regs_n) ? instr->fields[FIELD_regs_n] : instr->fields[FIELD_regs];
+			for (int i = 0; i < regs; ++i)
+			{
+				int regIdx = (d + i * inc) % 32;
+				size_t offset = i * 8;
+				il.AddInstruction(il.SetRegister(8, GetRegisterByIndex(regIdx, "d"),
+					il.Load(8, offset == 0 ? base : il.Add(4, base, il.Const(4, offset)))));
+			}
+			totalSize = regs * 8;
+		}
+		else if (instr->format->operands[0].type == OPERAND_FORMAT_REGISTERS_INDEXED)
+		{
+			size_t elementSize = instr->fields[FIELD_ebytes];
+			unsigned int d = instr->fields[FIELD_d];
+			unsigned int inc = 1;
+			if (IS_FIELD_PRESENT(instr, FIELD_inc))
+				inc = instr->fields[FIELD_inc];
+			unsigned int index = instr->fields[FIELD_index];
+			int length = instr->fields[FIELD_length];
+			for (int i = 0; i < length; ++i)
+			{
+				int regIdx = (d + i * inc) % 32;
+				size_t offset = i * elementSize;
+				uint32_t reg = GetRegisterByIndex(regIdx, "d");
+				il.AddInstruction(il.SetRegister(8, reg,
+					InsertVld1Element(il, reg,
+						il.Load(elementSize, offset == 0 ? base : il.Add(4, base, il.Const(4, offset))),
+						elementSize, index)));
+			}
+			totalSize = length * elementSize;
+		}
+		else
+		{
+			il.AddInstruction(il.Unimplemented());
+			break;
+		}
+
+		if (HasWriteback(instr, 1))
+		{
+			uint32_t baseReg = GetRegisterByIndex(instr->fields[instr->format->operands[1].field0]);
+			if (IS_FIELD_PRESENT(instr, FIELD_register_index) && instr->fields[FIELD_register_index])
+			{
+				uint32_t indexReg = GetRegisterByIndex(instr->fields[FIELD_m]);
+				il.AddInstruction(il.SetRegister(4, baseReg,
+					il.Add(4, il.Register(4, baseReg), il.Register(4, indexReg))));
+			}
+			else
+			{
+				il.AddInstruction(il.SetRegister(4, baseReg,
+					il.Add(4, il.Register(4, baseReg), il.Const(4, totalSize))));
+			}
 		}
 		break;
 	}

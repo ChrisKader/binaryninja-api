@@ -174,6 +174,167 @@ static uint32_t GetDsbIntrinsic(DsbOption option)
 	}
 }
 
+static size_t GetDataTypeSize(DataType dataType)
+{
+	switch (dataType)
+	{
+	case DT_8:
+	case DT_S8:
+	case DT_U8:
+	case DT_I8:
+	case DT_P8:
+		return 1;
+	case DT_16:
+	case DT_S16:
+	case DT_U16:
+	case DT_I16:
+	case DT_F16:
+	case DT_P16:
+		return 2;
+	case DT_32:
+	case DT_S32:
+	case DT_U32:
+	case DT_I32:
+	case DT_F32:
+	case DT_P32:
+		return 4;
+	case DT_64:
+	case DT_S64:
+	case DT_U64:
+	case DT_I64:
+	case DT_F64:
+	case DT_P64:
+		return 8;
+	default:
+		return 0;
+	}
+}
+
+static bool IsSignedDataType(DataType dataType)
+{
+	switch (dataType)
+	{
+	case DT_S8:
+	case DT_S16:
+	case DT_S32:
+	case DT_S64:
+	case DT_I8:
+	case DT_I16:
+	case DT_I32:
+	case DT_I64:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static ExprId ReadVectorElement(LowLevelILFunction& il, InstructionOperand& op, size_t elementSize, size_t outputSize, bool isSigned)
+{
+	size_t regSize = get_register_size(op.reg);
+	size_t shift = op.imm * elementSize * 8;
+	ExprId value = il.Register(regSize, op.reg);
+	if (shift != 0)
+		value = il.LogicalShiftRight(regSize, value, il.Const(1, shift));
+	value = il.LowPart(elementSize, value);
+	if (outputSize > elementSize)
+		return isSigned ? il.SignExtend(outputSize, value) : il.ZeroExtend(outputSize, value);
+	return value;
+}
+
+static ExprId ReadVectorElement(LowLevelILFunction& il, Register reg, size_t elementSize, size_t index)
+{
+	size_t regSize = get_register_size(reg);
+	size_t shift = index * elementSize * 8;
+	ExprId value = il.Register(regSize, reg);
+	if (shift != 0)
+		value = il.LogicalShiftRight(regSize, value, il.Const(1, shift));
+	return il.LowPart(elementSize, value);
+}
+
+static ExprId InsertVectorElement(LowLevelILFunction& il, InstructionOperand& dst, ExprId src, size_t elementSize)
+{
+	size_t regSize = get_register_size(dst.reg);
+	size_t shift = dst.imm * elementSize * 8;
+	size_t elementBits = elementSize * 8;
+	uint64_t elementMask = (elementBits == 64) ? UINT64_MAX : ((1ULL << elementBits) - 1);
+	uint64_t shiftedMask = elementMask << shift;
+
+	ExprId value = il.LowPart(elementSize, src);
+	if (regSize > elementSize)
+		value = il.ZeroExtend(regSize, value);
+	if (shift != 0)
+		value = il.ShiftLeft(regSize, value, il.Const(1, shift));
+
+	return il.Or(regSize,
+		il.And(regSize, il.Register(regSize, dst.reg), il.Const(regSize, ~shiftedMask)),
+		value);
+}
+
+static ExprId InsertVectorElement(LowLevelILFunction& il, Register reg, ExprId src, size_t elementSize, size_t index)
+{
+	size_t regSize = get_register_size(reg);
+	size_t shift = index * elementSize * 8;
+	size_t elementBits = elementSize * 8;
+	uint64_t elementMask = (elementBits == 64) ? UINT64_MAX : ((1ULL << elementBits) - 1);
+	uint64_t shiftedMask = elementMask << shift;
+
+	ExprId value = src;
+	if (regSize > elementSize)
+		value = il.ZeroExtend(regSize, value);
+	if (shift != 0)
+		value = il.ShiftLeft(regSize, value, il.Const(1, shift));
+
+	return il.Or(regSize,
+		il.And(regSize, il.Register(regSize, reg), il.Const(regSize, ~shiftedMask)),
+		value);
+}
+
+static ExprId ReadFloatOperand(LowLevelILFunction& il, InstructionOperand& op, size_t size)
+{
+	switch (op.cls)
+	{
+	case REG:
+		return il.Register(size, op.reg);
+	case FIMM32:
+		return il.FloatConstRaw(size, op.imm);
+	case FIMM64:
+		return il.FloatConstRaw(size, op.imm64);
+	default:
+		return il.Unimplemented();
+	}
+}
+
+static void FloatCompare(LowLevelILFunction& il, Instruction& instr)
+{
+	InstructionOperand& lhsOp = instr.operands[0];
+	InstructionOperand& rhsOp = instr.operands[1];
+	size_t size = get_register_size(lhsOp.reg);
+	ExprId lhs = ReadFloatOperand(il, lhsOp, size);
+	ExprId rhs = (rhsOp.cls == NONE) ? il.FloatConstRaw(size, 0) : ReadFloatOperand(il, rhsOp, size);
+
+	il.AddInstruction(il.SetFlag(IL_FLAG_N, il.FloatCompareLessThan(size, lhs, rhs)));
+	il.AddInstruction(il.SetFlag(IL_FLAG_Z, il.FloatCompareEqual(size, lhs, rhs)));
+	il.AddInstruction(il.SetFlag(IL_FLAG_C, il.Not(1, il.FloatCompareLessThan(size, lhs, rhs))));
+	il.AddInstruction(il.SetFlag(IL_FLAG_V, il.FloatCompareUnordered(size, lhs, rhs)));
+}
+
+static ExprId DuplicateScalar(LowLevelILFunction& il, InstructionOperand& src, size_t elementSize, size_t destSize)
+{
+	if (elementSize == 4 && destSize == 8)
+		return il.RegisterSplit(4, src.reg, src.reg);
+
+	ExprId element = il.Register(get_register_size(src.reg), src.reg);
+	if (get_register_size(src.reg) > elementSize)
+		element = il.LowPart(elementSize, element);
+	if (destSize > elementSize)
+		element = il.ZeroExtend(destSize, element);
+
+	ExprId result = element;
+	for (size_t shift = elementSize * 8; shift < destSize * 8; shift += elementSize * 8)
+		result = il.Or(destSize, result, il.ShiftLeft(destSize, element, il.Const(1, shift)));
+	return result;
+}
+
 
 static ExprId GetShifted(LowLevelILFunction& il, Register reg, uint32_t ShiftAmount, Shift shift)
 {
@@ -557,6 +718,162 @@ static void Store(
 		default:
 			il.AddInstruction(il.Unimplemented());
 			break;
+	}
+}
+
+static void StoreVst1(LowLevelILFunction& il, Instruction& instr, size_t addr)
+{
+	InstructionOperand& regs = instr.operands[0];
+	InstructionOperand& mem = instr.operands[1];
+	InstructionOperand& writeback = instr.operands[2];
+	uint32_t regMask = (uint32_t)regs.reg;
+	size_t elementSize = GetDataTypeSize(instr.dataType);
+	size_t offset = 0;
+	size_t totalSize = 0;
+	ExprId base = ReadRegisterOrPointer(il, mem, addr);
+
+	if (regs.cls != REG_LIST_DOUBLE || mem.cls != MEM_ALIGNED || elementSize == 0)
+	{
+		il.AddInstruction(il.Unimplemented());
+		return;
+	}
+
+	for (uint32_t i = 0; i < 32; i++)
+	{
+		if (((regMask >> i) & 1) == 0)
+			continue;
+
+		Register reg = (Register)(REG_D0 + i);
+		size_t storeSize = regs.flags.hasElements ? elementSize : get_register_size(reg);
+		ExprId address = (offset == 0) ? base : il.Add(4, base, il.Const(4, offset));
+		ExprId value = regs.flags.hasElements ? ReadVectorElement(il, reg, elementSize, regs.imm) : il.Register(storeSize, reg);
+		il.AddInstruction(il.Store(storeSize, address, value));
+		offset += storeSize;
+		totalSize += storeSize;
+	}
+
+	if (mem.flags.wb)
+	{
+		il.AddInstruction(il.SetRegister(get_register_size(mem.reg), mem.reg,
+			il.Add(get_register_size(mem.reg), base, il.Const(get_register_size(mem.reg), totalSize))));
+	}
+	else if (writeback.cls == REG)
+	{
+		il.AddInstruction(il.SetRegister(get_register_size(mem.reg), mem.reg,
+			il.Add(get_register_size(mem.reg), base, il.Register(get_register_size(writeback.reg), writeback.reg))));
+	}
+}
+
+static void StoreVpush(LowLevelILFunction& il, Instruction& instr, size_t addr)
+{
+	(void) addr;
+	InstructionOperand& regs = instr.operands[0];
+	uint32_t regMask = (uint32_t)regs.reg;
+	Register baseReg;
+	size_t regSize;
+
+	if (regs.cls == REG_LIST_SINGLE)
+	{
+		baseReg = REG_S0;
+		regSize = 4;
+	}
+	else if (regs.cls == REG_LIST_DOUBLE)
+	{
+		baseReg = REG_D0;
+		regSize = 8;
+	}
+	else
+	{
+		il.AddInstruction(il.Unimplemented());
+		return;
+	}
+
+	for (uint32_t i = 0; i < 32; i++)
+	{
+		if (((regMask >> i) & 1) == 1)
+		{
+			Register reg = (Register)(baseReg + i);
+			il.AddInstruction(il.Push(regSize, il.Register(regSize, reg)));
+		}
+	}
+}
+
+static void LoadVpop(LowLevelILFunction& il, Instruction& instr, size_t addr)
+{
+	(void) addr;
+	InstructionOperand& regs = instr.operands[0];
+	uint32_t regMask = (uint32_t)regs.reg;
+	Register baseReg;
+	size_t regSize;
+
+	if (regs.cls == REG_LIST_SINGLE)
+	{
+		baseReg = REG_S0;
+		regSize = 4;
+	}
+	else if (regs.cls == REG_LIST_DOUBLE)
+	{
+		baseReg = REG_D0;
+		regSize = 8;
+	}
+	else
+	{
+		il.AddInstruction(il.Unimplemented());
+		return;
+	}
+
+	for (uint32_t i = 0; i < 32; i++)
+	{
+		if (((regMask >> i) & 1) == 1)
+		{
+			Register reg = (Register)(baseReg + i);
+			il.AddInstruction(il.SetRegister(regSize, reg, il.Pop(regSize)));
+		}
+	}
+}
+
+static void LoadVld1(LowLevelILFunction& il, Instruction& instr, size_t addr)
+{
+	InstructionOperand& regs = instr.operands[0];
+	InstructionOperand& mem = instr.operands[1];
+	InstructionOperand& writeback = instr.operands[2];
+	uint32_t regMask = (uint32_t)regs.reg;
+	size_t elementSize = GetDataTypeSize(instr.dataType);
+	size_t offset = 0;
+	size_t totalSize = 0;
+	ExprId base = ReadRegisterOrPointer(il, mem, addr);
+
+	if (regs.cls != REG_LIST_DOUBLE || mem.cls != MEM_ALIGNED || elementSize == 0)
+	{
+		il.AddInstruction(il.Unimplemented());
+		return;
+	}
+
+	for (uint32_t i = 0; i < 32; i++)
+	{
+		if (((regMask >> i) & 1) == 0)
+			continue;
+
+		Register reg = (Register)(REG_D0 + i);
+		size_t loadSize = regs.flags.hasElements ? elementSize : get_register_size(reg);
+		ExprId address = (offset == 0) ? base : il.Add(4, base, il.Const(4, offset));
+		ExprId value = il.Load(loadSize, address);
+		if (regs.flags.hasElements)
+			value = InsertVectorElement(il, reg, value, elementSize, regs.imm);
+		il.AddInstruction(il.SetRegister(get_register_size(reg), reg, value));
+		offset += loadSize;
+		totalSize += loadSize;
+	}
+
+	if (mem.flags.wb)
+	{
+		il.AddInstruction(il.SetRegister(get_register_size(mem.reg), mem.reg,
+			il.Add(get_register_size(mem.reg), base, il.Const(get_register_size(mem.reg), totalSize))));
+	}
+	else if (writeback.cls == REG)
+	{
+		il.AddInstruction(il.SetRegister(get_register_size(mem.reg), mem.reg,
+			il.Add(get_register_size(mem.reg), base, il.Register(get_register_size(writeback.reg), writeback.reg))));
 	}
 }
 
@@ -1467,6 +1784,22 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 								il.Register(get_register_size((enum Register)j), j)));
 						}
 					}
+				});
+			break;
+		case ARMV7_VPUSH:
+			ConditionExecute(addrSize, instr.cond, instr, il,
+				[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+				{
+					(void) addrSize;
+					StoreVpush(il, instr, addr);
+				});
+			break;
+		case ARMV7_VPOP:
+			ConditionExecute(addrSize, instr.cond, instr, il,
+				[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+				{
+					(void) addrSize;
+					LoadVpop(il, instr, addr);
 				});
 			break;
 		case ARMV7_QADD:
@@ -5215,6 +5548,29 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 				)
 			);
 			break;
+		case ARMV7_VCMP:
+		case ARMV7_VCMPE:
+			ConditionExecute(addrSize, instr.cond, instr, il,
+				[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+				{
+					(void) addrSize;
+					FloatCompare(il, instr);
+				});
+			break;
+		case ARMV7_VDUP:
+		{
+			size_t elementSize = GetDataTypeSize(instr.dataType);
+			if (op1.cls != REG || op2.cls != REG || elementSize == 0)
+			{
+				ConditionExecute(il, instr.cond, il.Unimplemented());
+				break;
+			}
+			ConditionExecute(il, instr.cond,
+				SetRegisterOrBranch(il, op1.reg,
+					DuplicateScalar(il, op2, elementSize, get_register_size(op1.reg)),
+					flagOperation[instr.setsFlags]));
+			break;
+		}
 		case ARMV7_VDIV:
 			if((instr.dataType != DT_F32) && (instr.dataType != DT_F64))
 				break;
@@ -5228,6 +5584,23 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 				)
 			);
 			break;
+		case ARMV7_VMLA:
+		case ARMV7_VMLS:
+		{
+			if ((instr.dataType != DT_F32) && (instr.dataType != DT_F64))
+				break;
+
+			size_t size = get_register_size(op1.reg);
+			ExprId product = il.FloatMult(size,
+				il.Register(get_register_size(op2.reg), op2.reg),
+				il.Register(get_register_size(op3.reg), op3.reg));
+			ExprId value = (instr.operation == ARMV7_VMLA)
+				? il.FloatAdd(size, il.Register(size, op1.reg), product)
+				: il.FloatSub(size, il.Register(size, op1.reg), product);
+			ConditionExecute(il, instr.cond,
+				il.SetRegister(size, op1.reg, value));
+			break;
+		}
 		case ARMV7_VLDR:
 			ConditionExecute(addrSize, instr.cond, instr, il,
 					[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
@@ -5238,25 +5611,72 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 					});
 			break;
 		case ARMV7_VMOV:
+			if (op1.cls == REG && op1.flags.hasElements == 1 && op2.cls == REG && op3.cls == NONE)
+			{
+				size_t elementSize = GetDataTypeSize(instr.dataType);
+				if (elementSize == 0)
+				{
+					ConditionExecute(il, instr.cond, il.Unimplemented());
+					break;
+				}
+				ConditionExecute(il, instr.cond,
+					SetRegisterOrBranch(il, op1.reg,
+						InsertVectorElement(il, op1, il.Register(get_register_size(op2.reg), op2.reg), elementSize),
+						flagOperation[instr.setsFlags]));
+				break;
+			}
+			if (op1.cls == REG && op2.cls == REG && op2.flags.hasElements == 1 && op3.cls == NONE)
+			{
+				size_t elementSize = GetDataTypeSize(instr.dataType);
+				size_t outputSize = get_register_size(op1.reg);
+				if (elementSize == 0)
+				{
+					ConditionExecute(il, instr.cond, il.Unimplemented());
+					break;
+				}
+				ConditionExecute(il, instr.cond,
+					SetRegisterOrBranch(il, op1.reg,
+						ReadVectorElement(il, op2, elementSize, outputSize, IsSignedDataType(instr.dataType)),
+						flagOperation[instr.setsFlags]));
+				break;
+			}
 			/* VMOV(register) */
-			if (op1.cls == REG && op2.cls == REG && op3.cls == NONE)
+			if (op1.cls == REG && op2.cls == REG && op3.cls == REG && op4.cls == NONE)
+			{
+				if (get_register_size(op1.reg) == (get_register_size(op2.reg) + get_register_size(op3.reg)))
+				{
+					ConditionExecute(il, instr.cond,
+						SetRegisterOrBranch(il, op1.reg,
+							il.RegisterSplit(get_register_size(op2.reg), op3.reg, op2.reg),
+							flagOperation[instr.setsFlags]));
+				}
+				else
+				{
+					ConditionExecute(il, instr.cond,
+						il.SetRegisterSplit(get_register_size(op1.reg), op2.reg, op1.reg,
+							il.Register(get_register_size(op3.reg), op3.reg),
+							flagOperation[instr.setsFlags]));
+				}
+			}
+			else if (op1.cls == REG && op2.cls == REG && op3.cls == NONE)
 			{
 				ConditionExecute(il, instr.cond,
 					SetRegisterOrBranch(il, op1.reg,
 						ReadILOperand(il, op2, addr), flagOperation[instr.setsFlags]));
-			} else if (op1.cls == REG && (op2.cls == IMM || op2.cls == IMM64) && op3.cls == NONE) {
+			} else if (op1.cls == REG && (op2.cls == IMM || op2.cls == IMM64 || op2.cls == FIMM32 || op2.cls == FIMM64) && op3.cls == NONE) {
 			/* VMOV(immediate) */
+				uint64_t imm = (op2.cls == FIMM32) ? op2.imm : op2.imm64;
 				if (get_register_size(op1.reg) == 16)
 				{
 					ConditionExecute(il, instr.cond,
 						SetRegisterOrBranch(il, op1.reg,
-							il.Or(16, il.Const(8, op2.imm64), il.ShiftLeft(16, il.Const(8, op2.imm64), il.Const(8, 64))),
+							il.Or(16, il.Const(8, imm), il.ShiftLeft(16, il.Const(8, imm), il.Const(8, 64))),
 								flagOperation[instr.setsFlags]));
 				} else
 				{
 					ConditionExecute(il, instr.cond,
 						SetRegisterOrBranch(il, op1.reg,
-							il.Const(get_register_size(op1.reg), op2.imm64), flagOperation[instr.setsFlags]));
+							il.Const(get_register_size(op1.reg), imm), flagOperation[instr.setsFlags]));
 				}
 			} else
 			{
@@ -5285,6 +5705,88 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 						Store(il, get_register_size(op1.reg), op1, op2, addr);
 					});
 			break;
+		case ARMV7_VST1:
+			ConditionExecute(addrSize, instr.cond, instr, il,
+					[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+					{
+						(void) addrSize;
+						StoreVst1(il, instr, addr);
+					});
+			break;
+		case ARMV7_VLD1:
+			ConditionExecute(addrSize, instr.cond, instr, il,
+					[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+					{
+						(void) addrSize;
+						LoadVld1(il, instr, addr);
+					});
+			break;
+		case ARMV7_VSHR:
+		{
+			size_t elementSize = GetDataTypeSize(instr.dataType);
+			size_t size = get_register_size(op1.reg);
+			if (op1.cls != REG || op2.cls != REG || op3.cls != IMM || elementSize != size)
+			{
+				ConditionExecute(il, instr.cond, il.Unimplemented());
+				break;
+			}
+
+			ExprId value = IsSignedDataType(instr.dataType)
+				? il.ArithShiftRight(size, il.Register(size, op2.reg), il.Const(1, op3.imm))
+				: il.LogicalShiftRight(size, il.Register(size, op2.reg), il.Const(1, op3.imm));
+			ConditionExecute(il, instr.cond,
+				SetRegisterOrBranch(il, op1.reg, value, flagOperation[instr.setsFlags]));
+			break;
+		}
+		case ARMV7_VSHL:
+		{
+			size_t elementSize = GetDataTypeSize(instr.dataType);
+			size_t size = get_register_size(op1.reg);
+			if (op1.cls != REG || op2.cls != REG || elementSize != size)
+			{
+				ConditionExecute(il, instr.cond, il.Unimplemented());
+				break;
+			}
+
+			if (op3.cls == IMM)
+			{
+				ConditionExecute(il, instr.cond,
+					SetRegisterOrBranch(il, op1.reg,
+						il.ShiftLeft(size, il.Register(size, op2.reg), il.Const(1, op3.imm)),
+						flagOperation[instr.setsFlags]));
+				break;
+			}
+
+			if (op3.cls != REG || get_register_size(op3.reg) != size)
+			{
+				ConditionExecute(il, instr.cond, il.Unimplemented());
+				break;
+			}
+
+			ConditionExecute(addrSize, instr.cond, instr, il,
+				[&](size_t addrSize, Instruction& instr, LowLevelILFunction& il)
+				{
+					(void) addrSize;
+					(void) instr;
+					LowLevelILLabel rightShift, leftShift, done;
+					il.AddInstruction(il.If(
+						il.CompareSignedLessThan(size, il.Register(size, op3.reg), il.Const(size, 0)),
+						rightShift, leftShift));
+					il.MarkLabel(rightShift);
+					il.AddInstruction(SetRegisterOrBranch(il, op1.reg,
+						IsSignedDataType(instr.dataType)
+							? il.ArithShiftRight(size, il.Register(size, op2.reg), il.Neg(size, il.Register(size, op3.reg)))
+							: il.LogicalShiftRight(size, il.Register(size, op2.reg), il.Neg(size, il.Register(size, op3.reg))),
+						flagOperation[instr.setsFlags]));
+					il.AddInstruction(il.Goto(done));
+					il.MarkLabel(leftShift);
+					il.AddInstruction(SetRegisterOrBranch(il, op1.reg,
+						il.ShiftLeft(size, il.Register(size, op2.reg), il.Register(size, op3.reg)),
+						flagOperation[instr.setsFlags]));
+					il.MarkLabel(done);
+				});
+			break;
+		}
 		case ARMV7_VSUB:
 			if((instr.dataType != DT_F32) && (instr.dataType != DT_F64))
 				break;
