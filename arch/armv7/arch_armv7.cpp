@@ -99,6 +99,21 @@ static Ref<Enumeration> GetVfpStatusRegisterEnum()
 	return _enum;
 }
 
+static Ref<Enumeration> GetCpsIflagsEnum()
+{
+	EnumerationBuilder builder;
+	builder.AddMemberWithValue("none", IFL_NONE);
+	builder.AddMemberWithValue("a", IFL_A);
+	builder.AddMemberWithValue("i", IFL_I);
+	builder.AddMemberWithValue("ia", IFL_IA);
+	builder.AddMemberWithValue("f", IFL_F);
+	builder.AddMemberWithValue("fa", IFL_FA);
+	builder.AddMemberWithValue("fi", IFL_FI);
+	builder.AddMemberWithValue("fia", IFL_FIA);
+	Ref<Enumeration> _enum = builder.Finalize();
+	return _enum;
+}
+
 static bool IsRelatedCondition(Condition orig, Condition candidate)
 {
 	switch (orig)
@@ -1480,6 +1495,30 @@ public:
 			return "ExclusiveMonitorsPass";
 		case ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS:
 			return "SetExclusiveMonitors";
+		case ARMV7_INTRIN_DBG:
+			return "__dbg";
+		case ARMV7_INTRIN_CPS:
+			return "__cps";
+		case ARMV7_INTRIN_CPSID:
+			return "__cpsid";
+		case ARMV7_INTRIN_CPSIE:
+			return "__cpsie";
+		case ARMV7_INTRIN_CLREX:
+			return "__clrex";
+		case ARMV7_INTRIN_PLD:
+			return "__pld";
+		case ARMV7_INTRIN_YIELD:
+			return "__yield";
+		case ARMV7_INTRIN_SEV:
+			return "__sev";
+		case ARMV7_INTRIN_WFE:
+			return "__wfe";
+		case ARMV7_INTRIN_WFI:
+			return "__wfi";
+		case ARMV7_INTRIN_HVC:
+			return "__hvc";
+		case ARMV7_INTRIN_SMC:
+			return "__smc";
 		case ARMV7_INTRIN_MRS:
 			return "__mrs";
 		case ARMV7_INTRIN_MSR:
@@ -1502,6 +1541,18 @@ public:
 				ARMV7_INTRIN_COPROC_SENDTWOWORDS,
 				ARMV7_INTRIN_EXCLUSIVE_MONITORS_PASS,
 				ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS,
+				ARMV7_INTRIN_DBG,
+				ARMV7_INTRIN_CPS,
+				ARMV7_INTRIN_CPSID,
+				ARMV7_INTRIN_CPSIE,
+				ARMV7_INTRIN_CLREX,
+				ARMV7_INTRIN_PLD,
+				ARMV7_INTRIN_YIELD,
+				ARMV7_INTRIN_SEV,
+				ARMV7_INTRIN_WFE,
+				ARMV7_INTRIN_WFI,
+				ARMV7_INTRIN_HVC,
+				ARMV7_INTRIN_SMC,
 				ARMV7_INTRIN_MRS,
 				ARMV7_INTRIN_MSR,
 				ARMV7_INTRIN_VMRS,
@@ -1549,6 +1600,32 @@ public:
 			return {
 				NameAndType("address", Type::PointerType(4, Confidence(Type::VoidType(), 0), Confidence(false), Confidence(false), PointerReferenceType)),
 				NameAndType("size", Type::IntegerType(1, false)),
+			};
+		case ARMV7_INTRIN_SMC:
+			return {
+				NameAndType("imm", Type::IntegerType(1, false)),
+			};
+		case ARMV7_INTRIN_HVC:
+			return {
+				NameAndType("imm", Type::IntegerType(2, false)),
+			};
+		case ARMV7_INTRIN_DBG:
+			return {
+				NameAndType("option", Type::IntegerType(1, false)),
+			};
+		case ARMV7_INTRIN_PLD:
+			return {
+				NameAndType("address", Type::PointerType(4, Confidence(Type::VoidType(), 0), Confidence(false), Confidence(false), PointerReferenceType)),
+			};
+		case ARMV7_INTRIN_CPS:
+			return {
+				NameAndType("mode", Type::IntegerType(1, false)),
+			};
+		case ARMV7_INTRIN_CPSID:
+		case ARMV7_INTRIN_CPSIE:
+			return {
+				NameAndType("iflags", Confidence<Ref<Type>>(Type::EnumerationType(this, GetCpsIflagsEnum(), 1, false), BN_FULL_CONFIDENCE)),
+				NameAndType("mode", Type::IntegerType(1, false)),
 			};
 		case ARMV7_INTRIN_MRS:
 			return {

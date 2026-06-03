@@ -796,6 +796,61 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
         case ARMV7_BKPT:
             il.AddInstruction(il.Breakpoint());
             break;
+		case ARMV7_CLREX:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_CLREX, {}));
+			break;
+		case ARMV7_PLD:
+			ConditionExecute(il, instr.cond,
+				il.Intrinsic({}, ARMV7_INTRIN_PLD, {ReadILOperand(il, op1, addr, true)})
+			);
+			break;
+		case ARMV7_YIELD:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_YIELD, {}));
+			break;
+		case ARMV7_SEV:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_SEV, {}));
+			break;
+		case ARMV7_WFE:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_WFE, {}));
+			break;
+		case ARMV7_WFI:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_WFI, {}));
+			break;
+		case ARMV7_DBG:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_DBG, {il.Const(1, op1.imm)}));
+			break;
+		case ARMV7_CPS:
+		case ARMV7_CPSIE:
+		case ARMV7_CPSID:
+		{
+			uint8_t iflags = IFL_NONE;
+			uint8_t mode = 0;
+
+			for (size_t i = 0; i < 4; i++)
+			{
+				if (instr.operands[i].cls == IFLAGS)
+					iflags = instr.operands[i].iflag;
+				else if (instr.operands[i].cls == IMM)
+					mode = instr.operands[i].imm;
+			}
+
+			if (instr.operation == ARMV7_CPS)
+			{
+				ConditionExecute(il, instr.cond,
+					il.Intrinsic({}, ARMV7_INTRIN_CPS, {il.Const(1, mode)})
+				);
+			}
+			else
+			{
+				ConditionExecute(il, instr.cond,
+					il.Intrinsic({}, (instr.operation == ARMV7_CPSIE) ? ARMV7_INTRIN_CPSIE : ARMV7_INTRIN_CPSID, {
+						il.Const(1, iflags),
+						il.Const(1, mode)
+					})
+				);
+			}
+			break;
+		}
 		case ARMV7_BL:
 			ConditionExecute(il, instr.cond, il.Call(il.ConstPointer(4, op1.imm)));
 			break;
@@ -4444,6 +4499,12 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 						il.Sub(get_register_size(op2.reg),
 							ReadRegisterOrPointer(il, op2, addr),
 							ReadILOperand(il, op3, addr), flagOperation[instr.setsFlags])));
+			break;
+		case ARMV7_HVC:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_HVC, {il.Const(2, op1.imm)}));
+			break;
+		case ARMV7_SMC:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_SMC, {il.Const(1, op1.imm)}));
 			break;
 		case ARMV7_SVC:
 			ConditionExecute(addrSize, instr.cond, instr, il,

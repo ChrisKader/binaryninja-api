@@ -87,6 +87,10 @@ test_cases = \
     ('A', b'\x81\x0a\x20\xee', 'LLIL_SET_REG.d(s0,LLIL_FMUL.d(LLIL_REG.d(s1),LLIL_REG.d(s2)))'),
     # vdiv.f32 s0, s1, s2
     ('A', b'\x81\x0a\x80\xee', 'LLIL_SET_REG.d(s0,LLIL_FDIV.d(LLIL_REG.d(s1),LLIL_REG.d(s2)))'),
+    # hvc #0
+    ('A', b'\x70\x00\x40\xe1', 'LLIL_INTRINSIC([],__hvc,[LLIL_CONST.w(0x0)])'),
+    # smc #0
+    ('A', b'\x70\x00\x60\xe1', 'LLIL_INTRINSIC([],__smc,[LLIL_CONST.b(0x0)])'),
     # svc #0; svc #1; svc #2; svc #3
     ('A', b'\x00\x00\x00\xef', 'LLIL_SET_REG.d(syscall_info,LLIL_CONST.d(0x0)); LLIL_SYSCALL()'),
     ('A', b'\x01\x00\x00\xef', 'LLIL_SET_REG.d(syscall_info,LLIL_CONST.d(0x1)); LLIL_SYSCALL()'),
@@ -100,6 +104,26 @@ test_cases = \
     ('A', b'\x01\x00\xa0\xe1', 'LLIL_SET_REG.d(r0,LLIL_REG.d(r1))'),
     # nop
     ('A', b'\x00\xf0\x20\xe3', 'LLIL_NOP()'),
+    # clrex
+    ('A', b'\x1f\xf0\x7f\xf5', 'LLIL_INTRINSIC([],__clrex,[])'),
+    # pld [r0]
+    ('A', b'\x00\xf0\xd0\xf5', 'LLIL_INTRINSIC([],__pld,[LLIL_REG.d(r0)])'),
+    # yield
+    ('A', b'\x01\xf0\x20\xe3', 'LLIL_INTRINSIC([],__yield,[])'),
+    # wfe
+    ('A', b'\x02\xf0\x20\xe3', 'LLIL_INTRINSIC([],__wfe,[])'),
+    # wfi
+    ('A', b'\x03\xf0\x20\xe3', 'LLIL_INTRINSIC([],__wfi,[])'),
+    # sev
+    ('A', b'\x04\xf0\x20\xe3', 'LLIL_INTRINSIC([],__sev,[])'),
+    # dbg #0
+    ('A', b'\xf0\xf0\x20\xe3', 'LLIL_INTRINSIC([],__dbg,[LLIL_CONST.b(0x0)])'),
+    # cps #0x13
+    ('A', b'\x13\x00\x02\xf1', 'LLIL_INTRINSIC([],__cps,[LLIL_CONST.b(0x13)])'),
+    # cpsid i
+    ('A', b'\x80\x00\x0c\xf1', 'LLIL_INTRINSIC([],__cpsid,[LLIL_CONST.b(0x2),LLIL_CONST.b(0x0)])'),
+    # cpsie i
+    ('A', b'\x80\x00\x08\xf1', 'LLIL_INTRINSIC([],__cpsie,[LLIL_CONST.b(0x2),LLIL_CONST.b(0x0)])'),
     # vmov.i32 d16, #0
     ('A', b'\x10\x00\xc0\xf2', 'LLIL_SET_REG.q(d16,LLIL_CONST.q(0x0))'),
     # vmov.i32 q8, #0

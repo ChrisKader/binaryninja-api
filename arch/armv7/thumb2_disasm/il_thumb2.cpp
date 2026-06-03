@@ -1453,6 +1453,9 @@ bool GetLowLevelILForThumbInstruction(Architecture* arch, LowLevelILFunction& il
 	case ARMV7_SEV:
 		il.AddInstruction(il.Intrinsic({}, ARMV7_INTRIN_SEV, {}));
 		break;
+	case ARMV7_YIELD:
+		il.AddInstruction(il.Intrinsic({}, ARMV7_INTRIN_YIELD, {}));
+		break;
 	case ARMV7_STM:
 	case ARMV7_STMIA:
 	case ARMV7_STMDB:

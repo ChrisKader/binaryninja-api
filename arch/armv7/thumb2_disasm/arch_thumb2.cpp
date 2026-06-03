@@ -1657,6 +1657,8 @@ public:
 			return "__msr";
 		case ARMV7_INTRIN_VMRS:
 			return "__vmrs";
+		case ARMV7_INTRIN_YIELD:
+			return "__yield";
 		case ARMV7_INTRIN_SEV:
 			return "__sev";
 		case ARMV7_INTRIN_WFE:
@@ -1702,6 +1704,7 @@ public:
 			ARMV7_INTRIN_MRS,
 			ARMV7_INTRIN_MSR,
 			ARMV7_INTRIN_VMRS,
+			ARMV7_INTRIN_YIELD,
 			ARMV7_INTRIN_SEV,
 			ARMV7_INTRIN_WFE,
 			ARMV7_INTRIN_WFI,
