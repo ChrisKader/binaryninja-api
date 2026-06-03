@@ -108,6 +108,12 @@ test_cases = \
     ('A', b'\x1f\xf0\x7f\xf5', 'LLIL_INTRINSIC([],__clrex,[])'),
     # pld [r0]
     ('A', b'\x00\xf0\xd0\xf5', 'LLIL_INTRINSIC([],__pld,[LLIL_REG.d(r0)])'),
+    # dsb sy
+    ('A', b'\x4f\xf0\x7f\xf5', 'LLIL_INTRINSIC([],__dsb_SY,[])'),
+    # dmb sy
+    ('A', b'\x5f\xf0\x7f\xf5', 'LLIL_INTRINSIC([],__dmb_SY,[])'),
+    # isb sy
+    ('A', b'\x6f\xf0\x7f\xf5', 'LLIL_INTRINSIC([],__isb,[])'),
     # yield
     ('A', b'\x01\xf0\x20\xe3', 'LLIL_INTRINSIC([],__yield,[])'),
     # wfe

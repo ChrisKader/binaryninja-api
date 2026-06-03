@@ -124,6 +124,56 @@ static void ConditionExecute(LowLevelILFunction& il, Condition cond, ExprId true
 	il.MarkLabel(falseCode);
 }
 
+static uint32_t GetDmbIntrinsic(DsbOption option)
+{
+	switch (option)
+	{
+	case DSB_SY:
+		return ARMV7_INTRIN_DMB_SY;
+	case DSB_ST:
+		return ARMV7_INTRIN_DMB_ST;
+	case DSB_ISH:
+		return ARMV7_INTRIN_DMB_ISH;
+	case DSB_ISHST:
+		return ARMV7_INTRIN_DMB_ISHST;
+	case DSB_NSH:
+		return ARMV7_INTRIN_DMB_NSH;
+	case DSB_NSHST:
+		return ARMV7_INTRIN_DMB_NSHST;
+	case DSB_OSH:
+		return ARMV7_INTRIN_DMB_OSH;
+	case DSB_OSHST:
+		return ARMV7_INTRIN_DMB_OSHST;
+	default:
+		return 0;
+	}
+}
+
+static uint32_t GetDsbIntrinsic(DsbOption option)
+{
+	switch (option)
+	{
+	case DSB_SY:
+		return ARMV7_INTRIN_DSB_SY;
+	case DSB_ST:
+		return ARMV7_INTRIN_DSB_ST;
+	case DSB_ISH:
+		return ARMV7_INTRIN_DSB_ISH;
+	case DSB_ISHST:
+		return ARMV7_INTRIN_DSB_ISHST;
+	case DSB_NSH:
+		return ARMV7_INTRIN_DSB_NSH;
+	case DSB_NSHST:
+		return ARMV7_INTRIN_DSB_NSHST;
+	case DSB_OSH:
+		return ARMV7_INTRIN_DSB_OSH;
+	case DSB_OSHST:
+		return ARMV7_INTRIN_DSB_OSHST;
+	default:
+		return 0;
+	}
+}
+
 
 static ExprId GetShifted(LowLevelILFunction& il, Register reg, uint32_t ShiftAmount, Shift shift)
 {
@@ -1319,10 +1369,28 @@ bool GetLowLevelILForArmInstruction(Architecture* arch, uint64_t addr, LowLevelI
 					ReadILOperand(il, op2, addr), flagOperation[instr.setsFlags])));
 			break;
 		case ARMV7_NOP:
-		case ARMV7_DSB:
-		case ARMV7_DMB:
-		case ARMV7_ISB:
 			ConditionExecute(il, instr.cond, il.Nop());
+			break;
+		case ARMV7_DMB:
+		{
+			uint32_t intrinsic = GetDmbIntrinsic(op1.dsbOpt);
+			if (intrinsic == 0)
+				il.AddInstruction(il.Unimplemented());
+			else
+				ConditionExecute(il, instr.cond, il.Intrinsic({}, intrinsic, {}));
+			break;
+		}
+		case ARMV7_DSB:
+		{
+			uint32_t intrinsic = GetDsbIntrinsic(op1.dsbOpt);
+			if (intrinsic == 0)
+				il.AddInstruction(il.Unimplemented());
+			else
+				ConditionExecute(il, instr.cond, il.Intrinsic({}, intrinsic, {}));
+			break;
+		}
+		case ARMV7_ISB:
+			ConditionExecute(il, instr.cond, il.Intrinsic({}, ARMV7_INTRIN_ISB, {}));
 			break;
 		case ARMV7_ORR:
 			ConditionExecute(il, instr.cond, SetRegisterOrBranch(il, op1.reg,

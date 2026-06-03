@@ -1497,6 +1497,40 @@ public:
 			return "SetExclusiveMonitors";
 		case ARMV7_INTRIN_DBG:
 			return "__dbg";
+		case ARMV7_INTRIN_DMB_SY:
+			return "__dmb_SY";
+		case ARMV7_INTRIN_DMB_ST:
+			return "__dmb_ST";
+		case ARMV7_INTRIN_DMB_ISH:
+			return "__dmb_ISH";
+		case ARMV7_INTRIN_DMB_ISHST:
+			return "__dmb_ISHST";
+		case ARMV7_INTRIN_DMB_NSH:
+			return "__dmb_NSH";
+		case ARMV7_INTRIN_DMB_NSHST:
+			return "__dmb_NSHST";
+		case ARMV7_INTRIN_DMB_OSH:
+			return "__dmb_OSH";
+		case ARMV7_INTRIN_DMB_OSHST:
+			return "__dmb_OSHST";
+		case ARMV7_INTRIN_DSB_SY:
+			return "__dsb_SY";
+		case ARMV7_INTRIN_DSB_ST:
+			return "__dsb_ST";
+		case ARMV7_INTRIN_DSB_ISH:
+			return "__dsb_ISH";
+		case ARMV7_INTRIN_DSB_ISHST:
+			return "__dsb_ISHST";
+		case ARMV7_INTRIN_DSB_NSH:
+			return "__dsb_NSH";
+		case ARMV7_INTRIN_DSB_NSHST:
+			return "__dsb_NSHST";
+		case ARMV7_INTRIN_DSB_OSH:
+			return "__dsb_OSH";
+		case ARMV7_INTRIN_DSB_OSHST:
+			return "__dsb_OSHST";
+		case ARMV7_INTRIN_ISB:
+			return "__isb";
 		case ARMV7_INTRIN_CPS:
 			return "__cps";
 		case ARMV7_INTRIN_CPSID:
@@ -1542,6 +1576,23 @@ public:
 				ARMV7_INTRIN_EXCLUSIVE_MONITORS_PASS,
 				ARMV7_INTRIN_SET_EXCLUSIVE_MONITORS,
 				ARMV7_INTRIN_DBG,
+				ARMV7_INTRIN_DMB_SY,
+				ARMV7_INTRIN_DMB_ST,
+				ARMV7_INTRIN_DMB_ISH,
+				ARMV7_INTRIN_DMB_ISHST,
+				ARMV7_INTRIN_DMB_NSH,
+				ARMV7_INTRIN_DMB_NSHST,
+				ARMV7_INTRIN_DMB_OSH,
+				ARMV7_INTRIN_DMB_OSHST,
+				ARMV7_INTRIN_DSB_SY,
+				ARMV7_INTRIN_DSB_ST,
+				ARMV7_INTRIN_DSB_ISH,
+				ARMV7_INTRIN_DSB_ISHST,
+				ARMV7_INTRIN_DSB_NSH,
+				ARMV7_INTRIN_DSB_NSHST,
+				ARMV7_INTRIN_DSB_OSH,
+				ARMV7_INTRIN_DSB_OSHST,
+				ARMV7_INTRIN_ISB,
 				ARMV7_INTRIN_CPS,
 				ARMV7_INTRIN_CPSID,
 				ARMV7_INTRIN_CPSIE,
