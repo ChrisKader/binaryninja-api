@@ -770,7 +770,14 @@ extern "C"
 		LLIL_CLZ,     // Count leading zero bits; clz(0) == 8 * size
 		LLIL_CTZ,     // Count trailing zero bits; ctz(0) == 8 * size
 		LLIL_RBIT,    // Reverse bit order of the whole value
-		LLIL_CLS      // Count leading sign bits; number of bits below the sign bit that match it
+		LLIL_CLS,     // Count leading sign bits; number of bits below the sign bit that match it
+
+		// Integer minimum, maximum and absolute value
+		LLIL_MINS,    // Signed minimum of left and right
+		LLIL_MAXS,    // Signed maximum of left and right
+		LLIL_MINU,    // Unsigned minimum of left and right
+		LLIL_MAXU,    // Unsigned maximum of left and right
+		LLIL_ABS      // Signed absolute value of src; abs(INT_MIN) == INT_MIN
 	};
 
 	BN_ENUM(uint8_t, BNLowLevelILFlagCondition)
@@ -1556,7 +1563,14 @@ extern "C"
 		MLIL_CLZ,     // Count leading zero bits; clz(0) == 8 * size
 		MLIL_CTZ,     // Count trailing zero bits; ctz(0) == 8 * size
 		MLIL_RBIT,    // Reverse bit order of the whole value
-		MLIL_CLS      // Count leading sign bits; number of bits below the sign bit that match it
+		MLIL_CLS,     // Count leading sign bits; number of bits below the sign bit that match it
+
+		// Integer minimum, maximum and absolute value
+		MLIL_MINS,    // Signed minimum of left and right
+		MLIL_MAXS,    // Signed maximum of left and right
+		MLIL_MINU,    // Unsigned minimum of left and right
+		MLIL_MAXU,    // Unsigned maximum of left and right
+		MLIL_ABS      // Signed absolute value of src; abs(INT_MIN) == INT_MIN
 	};
 
 	typedef struct BNMediumLevelILInstruction
@@ -1738,7 +1752,14 @@ extern "C"
 		HLIL_CLZ,     // Count leading zero bits; clz(0) == 8 * size
 		HLIL_CTZ,     // Count trailing zero bits; ctz(0) == 8 * size
 		HLIL_RBIT,    // Reverse bit order of the whole value
-		HLIL_CLS      // Count leading sign bits; number of bits below the sign bit that match it
+		HLIL_CLS,     // Count leading sign bits; number of bits below the sign bit that match it
+
+		// Integer minimum, maximum and absolute value
+		HLIL_MINS,    // Signed minimum of left and right
+		HLIL_MAXS,    // Signed maximum of left and right
+		HLIL_MINU,    // Unsigned minimum of left and right
+		HLIL_MAXU,    // Unsigned maximum of left and right
+		HLIL_ABS      // Signed absolute value of src; abs(INT_MIN) == INT_MIN
 	};
 
 	typedef struct BNHighLevelILInstruction
